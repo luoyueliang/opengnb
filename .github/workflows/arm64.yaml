@@ -41,5 +41,9 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
             files: opengnb_arm64_lastest.tar.gz
+            tag_name: v1.0.0  # 你的版本号
+            release_name: Release v1.0.0  # 发布的名字
+            body: | 
+              Release notes for v1.0.0
         env:
             GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
