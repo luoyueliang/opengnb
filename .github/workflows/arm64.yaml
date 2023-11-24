@@ -24,7 +24,7 @@ jobs:
         with:
           go-version: 1.16
           architecture: arm64
-
+    
       - name: Build binary
         run: make -f Makefile.linux install
         shell: bash
@@ -35,12 +35,12 @@ jobs:
           cp -r examples/node_config_example conf
           cp -r bin release/
           cp -r conf release/
-          tar -czvf  ${{ RELEASE_NAME }}.tar.gz -C release .
+          tar -czvf  $RELEASE_NAME.tar.gz -C release .
         shell: bash
 
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v1
         with:
-          files: ${{ RELEASE_NAME }}.tar.gz
+          files: $RELEASE_NAME.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
