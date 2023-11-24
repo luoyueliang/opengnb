@@ -24,7 +24,11 @@ jobs:
         with:
           go-version: 1.16
           architecture: arm64
-
+      
+      - name: Build binary
+        run: GOARCH=arm64 make -f Makefile.linux install
+        shell: bash
+      
       - name: Build and Package
         run: |
           mkdir release
