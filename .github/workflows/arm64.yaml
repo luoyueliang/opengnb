@@ -35,7 +35,7 @@ jobs:
           cp -r examples/node_config_example conf
           cp -r bin release/
           cp -r conf release/
-          tar -czvf $RELEASE_NAME.tar.gz -C release .
+          tar -czvf  ${{ RELEASE_NAME }}.tar.gz -C release .
         shell: bash
 
       - name: Upload Release Asset
