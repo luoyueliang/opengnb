@@ -3,8 +3,8 @@ name: Build and Publish Release
 on:
   push:
     branches:
-      - main
-
+      - main 
+  
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -13,8 +13,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
         with:
-          repository: 'gnbdev/opengnb'
-          ref: 'main'  # 指定要检出的分支或提交 
+          repository: 'https://github.com/gnbdev/opengnb'
+          ref: 'master'  # 指定要检出的分支或提交 
+          path: 'workpath'
 
       - name: Set up Go
         uses: actions/setup-go@v2
