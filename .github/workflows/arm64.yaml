@@ -36,7 +36,7 @@ jobs:
         
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v1
-          with:
+        with:
             files: $RELEASE_NAME.tar.gz
-          env:
+        env:
             GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
