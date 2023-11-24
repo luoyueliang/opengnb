@@ -44,13 +44,13 @@ jobs:
           cp -r examples/node_config_example conf
           cp -r bin release/
           cp -r conf release/
-          tar -czvf opengnb_arm64_lastest.tar.gz -C release .
+          tar -czvf ${{ env.RELEASE_NAME }}.tar.gz -C release .
         shell: bash
         
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v1
         with:
-            files: opengnb_arm64_lastest.tar.gz
+            files: ${{ env.RELEASE_NAME }}.tar.gz
             tag_name: v1.0.0  # 你的版本号 
             body: | 
               Release notes for v1.0.0
