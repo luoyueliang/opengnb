@@ -17,30 +17,26 @@ jobs:
         uses: actions/checkout@v2
         with:
           repository: gnbdev/opengnb
-          ref: 'master'  # 指定要检出的分支或提交
+          ref: 'main'  # 指定要检出的分支或提交
 
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
           go-version: 1.16
           architecture: arm64
-    
-      - name: Build binary
-        run: make -f Makefile.linux install
-        shell: bash
 
-      - name: Package binaries and config
+      - name: Build and Package
         run: |
           mkdir release
           cp -r examples/node_config_example conf
           cp -r bin release/
           cp -r conf release/
-          tar -czvf  $RELEASE_NAME.tar.gz -C release .
+          tar -czvf $RELEASE_NAME.tar.gz -C release .
         shell: bash
-
+        
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v1
-        with:
-          files: $RELEASE_NAME.tar.gz
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          with:
+            files: $RELEASE_NAME.tar.gz
+          env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
