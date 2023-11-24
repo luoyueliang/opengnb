@@ -3,18 +3,21 @@ name: Build and Publish Release
 on:
   push:
     branches:
-      - main 
-  
+      - main
+
 jobs:
-  build:
+  build_and_publish_release:
     runs-on: ubuntu-latest
+
+    env:
+      RELEASE_NAME: opengnb_arm64_$(date +"%Y%m%d_%H%M%S")
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
         with:
           repository: gnbdev/opengnb
-          ref: 'master'  # 指定要检出的分支或提交 
+          ref: 'master'  # 指定要检出的分支或提交
 
       - name: Set up Go
         uses: actions/setup-go@v2
@@ -32,33 +35,12 @@ jobs:
           cp -r examples/node_config_example conf
           cp -r bin release/
           cp -r conf release/
+          tar -czvf $RELEASE_NAME.tar.gz -C release .
         shell: bash
-
-      - name: Archive binaries and config
-        run: tar -czvf opengnb_$(date +"%Y%m%d_%H%M%S").tar.gz -C release .
-        shell: bash
-
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: v1.0.0  # µ÷release ±ê£¬ȷ±£Ψһ
-          release_name: Release v1.0.0  # µ÷release Ã³Æ          
-          body: | 
-            Release notes for v1.0.0
-          draft: false
-          prerelease: false
 
       - name: Upload Release Asset
-        id: upload-release-asset
-        uses: actions/upload-release-asset@v1
+        uses: softprops/action-gh-release@v1
+        with:
+          files: $RELEASE_NAME.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./opengnb_*.tar.gz  # É´«ƥÅµķ¢²¼°ü      
-          asset_name: opengnb_arm64_$(date +"%Y%m%d_%H%M%S").tar.gz
-          asset_content_type: application/gzip
-
