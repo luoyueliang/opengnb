@@ -7,8 +7,7 @@ on:
 
 jobs:
   build_and_publish_release:
-    runs-on: ubuntu-latest
-    arch: arm64
+    runs-on: ubuntu-latest 
 
     env:
       RELEASE_NAME: opengnb_arm64_lastest
@@ -24,9 +23,14 @@ jobs:
         uses: actions/setup-go@v2
         with:
           go-version: 1.16
+          
+      - name: Install ARM64 cross-compiler
+        run: sudo apt-get install -y gcc-aarch64-linux-gnu
       
       - name: Build binary
-        run: GOARCH=arm64 make -f Makefile.linux install
+        run: |
+          export CC=aarch64-linux-gnu-gcc
+          GOARCH=arm64 make -f Makefile.linux install 
         shell: bash
       
       - name: Build and Package
