@@ -15,7 +15,6 @@ jobs:
         with:
           repository: gnbdev/opengnb
           ref: 'master'  # 指定要检出的分支或提交 
-          path: 'workpath'
 
       - name: Set up Go
         uses: actions/setup-go@v2
@@ -24,7 +23,7 @@ jobs:
           architecture: arm64
 
       - name: Build binary
-        run: make clean && make -f Makefile.linux install
+        run: make -f Makefile.linux install
         shell: bash
 
       - name: Package binaries and config
