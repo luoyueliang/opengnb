@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      RELEASE_NAME: opengnb_arm64_$(date +"%Y%m%d_%H%M%S")
+      RELEASE_NAME: opengnb_arm64_lastest
 
     steps:
       - name: Checkout code
@@ -23,7 +23,6 @@ jobs:
         uses: actions/setup-go@v2
         with:
           go-version: 1.16
-          architecture: arm64
       
       - name: Build binary
         run: GOARCH=arm64 make -f Makefile.linux install
@@ -35,12 +34,12 @@ jobs:
           cp -r examples/node_config_example conf
           cp -r bin release/
           cp -r conf release/
-          tar -czvf $RELEASE_NAME.tar.gz -C release .
+          tar -czvf opengnb_arm64_lastest.tar.gz -C release .
         shell: bash
         
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v1
         with:
-            files: $RELEASE_NAME.tar.gz
+            files: opengnb_arm64_lastest.tar.gz
         env:
             GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
