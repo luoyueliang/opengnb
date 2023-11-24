@@ -8,6 +8,7 @@ on:
 jobs:
   build_and_publish_release:
     runs-on: ubuntu-latest
+    arch: arm64
 
     env:
       RELEASE_NAME: opengnb_arm64_lastest
