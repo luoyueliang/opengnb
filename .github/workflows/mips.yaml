@@ -29,8 +29,8 @@ jobs:
       
       - name: Build binary
         run: |
-          export CC=gcc-mips-linux-gnu 
-          GCC_MIPS_PATH=$(which gcc-mips-linux-gnu)
+          export CC=mips-linux-gnu-gcc
+          GCC_MIPS_PATH=$(which mips-linux-gnu-gcc)
           if [ -n "$GCC_MIPS_PATH" ]; then
             echo "Found gcc-mips-linux-gnu at: $GCC_MIPS_PATH"
             
