@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest 
 
     env:
-      RELEASE_NAME: opengnb_mips_lastest
+      RELEASE_NAME: opengnb_mipsel_lastest
 
     steps:
       - name: Checkout code
@@ -24,22 +24,25 @@ jobs:
         with:
           go-version: 1.16
           
-      - name: Install mips cross-compiler
+      - name: Install mipsel cross-compiler
         run: sudo apt-get install -y gcc-mipsel-linux-gnu
       
       - name: Build binary
         run: |
-          export CC=mipsel-linux-gnu-gcc
           GCC_MIPS_PATH=$(which mipsel-linux-gnu-gcc)
           if [ -n "$GCC_MIPS_PATH" ]; then
             echo "Found gcc-mips-linux-gnu at: $GCC_MIPS_PATH"
-            
-            # 设置CROSS_COMPILE变量
-            export CROSS_COMPILE="$GCC_MIPS_PATH-"
           else
             echo "Error: gcc-mips-linux-gnu not found. Please install it or specify the path."
             exit 1
           fi 
+          export CROSS_COMPILE=mipsel-linux-gnu-
+          export CC=${CROSS_COMPILE}gcc
+          export CXX=${CROSS_COMPILE}g++
+          export LD=${CROSS_COMPILE}ld
+          export AR=${CROSS_COMPILE}ar
+          export AS=${CROSS_COMPILE}as
+          export RANLIB=${CROSS_COMPILE}ranlib
           sed -i 's|\(CC} -o ${GNB_CTL} ${GNB_CTL_OBJS} ${CLI_LDFLAGS}\)|\1 -static|' Makefile.linux
           sed -i 's|\(CC} -o ${GNB_ES} ${GNB_ES_OBJS} ${CRYPTO_OBJS} ${MINIUPNP_OBJS} ${LIBNATPMP_OBJS} ${GNB_ES_LDFLAGS}\)|\1 -static|' Makefile.linux
           sed -i 's|\(CC} -o ${GNB_CRYPTO} ./src/gnb_crypto.o ${CRYPTO_OBJS} ${CLI_LDFLAGS}\)|\1 -static|' Makefile.linux
