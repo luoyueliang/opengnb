@@ -1,9 +1,7 @@
 name: Build and Publish mipsel Release for er-x
 
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
 
 jobs:
   build_and_publish_mips_release:
