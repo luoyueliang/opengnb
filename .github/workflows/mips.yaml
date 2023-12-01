@@ -6,7 +6,7 @@ on:
       - main
 
 jobs:
-  build_and_publish_release:
+  build_and_publish_mips_release:
     runs-on: ubuntu-latest 
 
     env:
@@ -24,7 +24,7 @@ jobs:
         with:
           go-version: 1.16
           
-      - name: Install ARM64 cross-compiler
+      - name: Install mips cross-compiler
         run: sudo apt-get install -y gcc-mips-linux-gnu
       
       - name: Build binary
