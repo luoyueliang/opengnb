@@ -30,7 +30,16 @@ jobs:
       - name: Build binary
         run: |
           export CC=gcc-mips-linux-gnu 
-          export CROSS_COMPILE=mips-linux-gnu-
+          GCC_MIPS_PATH=$(which gcc-mips-linux-gnu)
+          if [ -n "$GCC_MIPS_PATH" ]; then
+            echo "Found gcc-mips-linux-gnu at: $GCC_MIPS_PATH"
+            
+            # 设置CROSS_COMPILE变量
+            export CROSS_COMPILE="$GCC_MIPS_PATH-"
+          else
+            echo "Error: gcc-mips-linux-gnu not found. Please install it or specify the path."
+            exit 1
+          fi 
           sed -i 's|\(CC} -o ${GNB_CTL} ${GNB_CTL_OBJS} ${CLI_LDFLAGS}\)|\1 -static|' Makefile.linux
           sed -i 's|\(CC} -o ${GNB_ES} ${GNB_ES_OBJS} ${CRYPTO_OBJS} ${MINIUPNP_OBJS} ${LIBNATPMP_OBJS} ${GNB_ES_LDFLAGS}\)|\1 -static|' Makefile.linux
           sed -i 's|\(CC} -o ${GNB_CRYPTO} ./src/gnb_crypto.o ${CRYPTO_OBJS} ${CLI_LDFLAGS}\)|\1 -static|' Makefile.linux
