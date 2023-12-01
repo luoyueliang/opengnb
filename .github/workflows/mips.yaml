@@ -1,4 +1,4 @@
-name: Build and Publish mips Release
+name: Build and Publish mipsel Release for er-x
 
 on:
   push:
@@ -25,12 +25,12 @@ jobs:
           go-version: 1.16
           
       - name: Install mips cross-compiler
-        run: sudo apt-get install -y gcc-mips-linux-gnu
+        run: sudo apt-get install -y gcc-mipsel-linux-gnu
       
       - name: Build binary
         run: |
-          export CC=mips-linux-gnu-gcc
-          GCC_MIPS_PATH=$(which mips-linux-gnu-gcc)
+          export CC=mipsel-linux-gnu-gcc
+          GCC_MIPS_PATH=$(which mipsel-linux-gnu-gcc)
           if [ -n "$GCC_MIPS_PATH" ]; then
             echo "Found gcc-mips-linux-gnu at: $GCC_MIPS_PATH"
             
