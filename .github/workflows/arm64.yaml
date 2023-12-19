@@ -49,8 +49,8 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
             files: ${{ env.RELEASE_NAME }}.tar.gz
-            tag_name: v1.0.0  # 你的版本号 
+            tag_name: v1.4.5.a  # 你的版本号 
             body: | 
-              Release notes for v1.0.0
+              Release notes for v1.4.5.a
         env:
             GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
