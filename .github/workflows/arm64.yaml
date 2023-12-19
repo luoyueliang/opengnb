@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build_and_publish_release:
+  build_and_publish_release for arm64:
     runs-on: ubuntu-latest 
 
     env:
