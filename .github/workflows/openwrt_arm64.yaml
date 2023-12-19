@@ -32,7 +32,7 @@ jobs:
           sed -i 's|\(CC} -o ${GNB_CTL} ${GNB_CTL_OBJS} ${CLI_LDFLAGS}\)|\1 -static|' Makefile.openwrt
           sed -i 's|\(CC} -o ${GNB_ES} ${GNB_ES_OBJS} ${CRYPTO_OBJS} ${MINIUPNP_OBJS} ${LIBNATPMP_OBJS} ${GNB_ES_LDFLAGS}\)|\1 -static|' Makefile.openwrt
           sed -i 's|\(CC} -o ${GNB_CRYPTO} ./src/gnb_crypto.o ${CRYPTO_OBJS} ${CLI_LDFLAGS}\)|\1 -static|' Makefile.openwrt
-          sed -i 's|\(CC} -o ${GNB_CLI} ${GNB_OBJS} ${GNB_CLI_OBJS} ${GNB_PF_OBJS} ${CRYPTO_OBJS} ${CLI_LDFLAGS}\)|\1 -static|' Makefile.openwrt
+          sed -i 's|\(CC} -o ${GNB_CLI} ${GNB_OBJS} ${GNB_CLI_OBJS} ${GNB_PF_OBJS} ${CRYPTO_OBJS} ${ZLIB_OBJS} ${CLI_LDFLAGS}\)|\1 -static|' Makefile.openwrt
 
           make -f Makefile.openwrt clean
           make -f Makefile.openwrt install 
