@@ -23,8 +23,17 @@ jobs:
           go-version: 1.16
           
       - name: Install Darwin cross-compiler
-        run: sudo apt-get update && sudo apt-get install -y o64-clang
-      
+        run: |
+          sudo apt-get update && sudo apt-get install -y build-essential cmake git
+          git clone https://github.com/tpoechtrager/osxcross.git
+          cd osxcross
+          sudo tools/get_dependencies.sh
+          sudo ./build.sh
+          sudo mv target /usr/osxcross
+          sudo mv tools /usr/osxcross
+          export PATH="/usr/osxcross/target/bin:$PATH"
+          export LD_LIBRARY_PATH="/usr/osxcross/target/lib:$LD_LIBRARY_PATH"
+          
       - name: Build binary
         run: |
           export CC=o64-clang
