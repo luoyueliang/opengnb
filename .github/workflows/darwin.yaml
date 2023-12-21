@@ -33,6 +33,7 @@ jobs:
           sudo mv tools /usr/osxcross
           export PATH="/usr/osxcross/target/bin:$PATH"
           export LD_LIBRARY_PATH="/usr/osxcross/target/lib:$LD_LIBRARY_PATH"
+        shell: bash
           
       - name: Build binary
         run: |
