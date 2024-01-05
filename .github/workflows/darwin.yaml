@@ -24,20 +24,27 @@ jobs:
           
       - name: Install Darwin cross-compiler
         run: |
-          sudo apt-get update && sudo apt-get install -y build-essential cmake git
-          git clone https://github.com/tpoechtrager/osxcross.git
-          cd osxcross
-          sudo sh -x tools/get_dependencies.sh
-          sudo sh -x ./build.sh
-          sudo mv target /usr/osxcross
-          sudo mv tools /usr/osxcross
-          export PATH="/usr/osxcross/target/bin:$PATH"
-          export LD_LIBRARY_PATH="/usr/osxcross/target/lib:$LD_LIBRARY_PATH"
+          sudo apt-get update 
+          sudo apt-get install -y --allow build-essential cmake git
+          sudo apt-get install -y crosstool-ng
+          mkdir ~/x-tools && cd ~/x-tools 
+          cat > ct-ng.config <<EOF
+          CT_ARCH_x86_64=y
+          CT_ARCH_ARCH=""
+          CT_ARCH_BINFMT="elf"
+          CT_ARCH_CPU="x86_64"
+          CT_TARGET_VENDOR="apple"
+          CT_TARGET_SYS="darwin"
+          CT_TARGET_CPU="x86_64"
+          CT_CC_LANG_CXX=y
+          EOF
+          ct-ng x86_64-apple-darwin && ct-ng build
+          export PATH=$HOME/x-tools/x86_64-apple-darwin/bin:$PATH
         shell: bash
           
       - name: Build binary
         run: |
-          export CC=o64-clang
+          export CC=x86_64-apple-darwin-gcc
           sed -i 's/^\(CFLAGS.*\)/\1 -static/' Makefile.Darwin
           sed -i 's/^\(CLI_LDFLAGS.*\)/\1 -static/' Makefile.Darwin
           sed -i 's/^\(GNB_ES_LDFLAGS.*\)/\1 -static/' Makefile.Darwin
