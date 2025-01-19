@@ -8,14 +8,14 @@ jobs:
     runs-on: ubuntu-latest 
 
     env:
-      RELEASE_NAME: opengnb_mipsel_lastest
+      RELEASE_NAME: opengnb_mipsel_1.4.5.b
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
         with:
           repository: gnbdev/opengnb
-          ref: master  # 指定要检出的分支或提交
+          ref: 1.4.5.b  # 指定要检出的分支或提交
 
       - name: Set up Go
         uses: actions/setup-go@v2
@@ -62,8 +62,8 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
             files: ${{ env.RELEASE_NAME }}.tar.gz
-            tag_name: v1.4.5.a  # 你的版本号 
+            tag_name: v1.4.5.b  # 你的版本号 
             body: | 
-              Release notes for v1.4.5.a
+              Release notes for v1.4.5.b
         env:
             GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
