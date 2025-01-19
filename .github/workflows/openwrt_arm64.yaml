@@ -15,7 +15,7 @@ jobs:
         uses: actions/checkout@v2
         with:
           repository: gnbdev/opengnb
-          ref: 1.4.5.b  # 指定要检出的分支或提交
+          ref: ver1.4.5.b  # 指定要检出的分支或提交
 
       - name: Set up Go
         uses: actions/setup-go@v2
