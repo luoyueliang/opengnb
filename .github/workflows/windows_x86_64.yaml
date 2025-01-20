@@ -8,14 +8,14 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      RELEASE_NAME: opengnb_windows_x86_64_1.4.5.b
+      RELEASE_NAME: opengnb_windows_x86_64_latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
         with:
           repository: gnbdev/opengnb
-          ref: ver1.4.5.b  # 修改为要检出的标签名
+          ref: master  # 修改为要检出的标签名
 
       - name: Set up Go
         uses: actions/setup-go@v2
@@ -62,9 +62,9 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
             files: ${{ env.RELEASE_NAME }}.tar.gz
-            tag_name: v1.4.5.b  # 你的版本号 
+            tag_name: latest  # 你的版本号 
             body: | 
-              Release notes for v1.4.5.b
+              Release notes for latest
         env:
             GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
  
