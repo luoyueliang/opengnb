@@ -1,0 +1,69 @@
+name: Build and Publish mipsel Release for openwrt on mipse 7621
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build_and_publish_mips_release:
+    runs-on: ubuntu-latest 
+
+    env:
+      RELEASE_NAME: opengnb_openwrt_mipsel_1.6.a
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          repository: luoyueliang/gnb
+          ref: master  # 指定要检出的分支或提交
+
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.16
+          
+      - name: Install mipsel cross-compiler
+        run: sudo apt-get install -y gcc-mipsel-linux-gnu
+      
+      - name: Build binary
+        run: |
+          GCC_MIPS_PATH=$(which mipsel-linux-gnu-gcc)
+          if [ -n "$GCC_MIPS_PATH" ]; then
+            echo "Found gcc-mips-linux-gnu at: $GCC_MIPS_PATH"
+          else
+            echo "Error: gcc-mips-linux-gnu not found. Please install it or specify the path."
+            exit 1
+          fi 
+          export CROSS_COMPILE=mipsel-linux-gnu-
+          export CC=${CROSS_COMPILE}gcc
+          export CXX=${CROSS_COMPILE}g++
+          export LD=${CROSS_COMPILE}ld
+          export AR=${CROSS_COMPILE}ar
+          export AS=${CROSS_COMPILE}as
+          export RANLIB=${CROSS_COMPILE}ranlib
+          sed -i 's|\(CC} -o ${GNB_CTL} ${GNB_CTL_OBJS} ${CLI_LDFLAGS}\)|\1 -static|' Makefile.linux
+          sed -i 's|\(CC} -o ${GNB_ES} ${GNB_ES_OBJS} ${CRYPTO_OBJS} ${MINIUPNP_OBJS} ${LIBNATPMP_OBJS} ${GNB_ES_LDFLAGS}\)|\1 -static|' Makefile.linux
+          sed -i 's|\(CC} -o ${GNB_CRYPTO} ./src/gnb_crypto.o ${CRYPTO_OBJS} ${CLI_LDFLAGS}\)|\1 -static|' Makefile.linux
+          sed -i 's|\(CC} -o ${GNB_CLI} ${GNB_OBJS} ${GNB_CLI_OBJS} ${GNB_PF_OBJS} ${CRYPTO_OBJS} ${ZLIB_OBJS} ${CLI_LDFLAGS}\)|\1 -static|' Makefile.linux
+          make -f Makefile.linux clean
+          make -f Makefile.linux install 
+        shell: bash
+      
+      - name: Build and Package
+        run: |
+          mkdir release
+          cp -r examples/node_config_example conf
+          cp -r bin release/
+          cp -r conf release/
+          tar -czvf ${{ env.RELEASE_NAME }}.tar.gz -C release .
+        shell: bash
+        
+      - name: Upload Release Asset
+        uses: softprops/action-gh-release@v1
+        with:
+            files: ${{ env.RELEASE_NAME }}.tar.gz
+            tag_name: v1.6.a  # 你的版本号 
+            body: | 
+              Release notes for v1.6.a
+        env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
