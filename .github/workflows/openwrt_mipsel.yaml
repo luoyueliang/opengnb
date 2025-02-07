@@ -15,31 +15,41 @@ jobs:
         uses: actions/checkout@v2
         with:
           repository: luoyueliang/gnb
-          token: ${{ secrets.PRIVATE_REPO_PAT }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           ref: main  # 指定要检出的分支或提交
 
-      - name: Set up Go
-        uses: actions/setup-go@v2
-        with:
-          go-version: 1.16
-          
-      - name: Install musl-based mipsel cross-compiler
+      - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y musl-tools musl-dev gcc-mipsel-linux-musl
-          wget https://musl.cc/mipsel-linux-musl-cross.tgz
-          tar -xvzf mipsel-linux-musl-cross.tgz
-          echo "$(pwd)/mipsel-linux-musl-cross/bin" >> $GITHUB_PATH
-        
+          sudo apt-get install -y build-essential flex bison \
+              autoconf automake texinfo libtool wget curl gawk \
+              cmake ninja-build
+
+      - name: Build musl-based mipsel cross-compiler
+        run: |
+          # 下载 musl-cross-make
+          git clone https://github.com/richfelker/musl-cross-make.git
+          cd musl-cross-make
+
+          # 配置 MIPS 交叉编译工具链
+          cat > config.mak <<EOF
+          TARGET = mipsel-linux-musl
+          OUTPUT = $(pwd)/toolchain
+          JOBS = $(nproc)
+          GCC_CONFIG += --enable-languages=c,c++
+          GCC_CONFIG += --with-arch=mips32r2 --with-tune=mips32r2
+          EOF
+
+          # 编译并安装
+          make -j$(nproc)
+          make install
+
+          # 添加到 PATH
+          echo "$(pwd)/toolchain/bin" >> $GITHUB_PATH
+          echo "TOOLCHAIN_PATH=$(pwd)/toolchain" >> $GITHUB_ENV
+
       - name: Build binary with musl
         run: |
-          GCC_MIPS_PATH=$(which mipsel-linux-musl-gcc)
-          if [ -n "$GCC_MIPS_PATH" ]; then
-            echo "Found mipsel-linux-musl-gcc at: $GCC_MIPS_PATH"
-          else
-            echo "Error: mipsel-linux-musl-gcc not found."
-            exit 1
-          fi 
           export CROSS_COMPILE=mipsel-linux-musl-
           export CC=${CROSS_COMPILE}gcc
           export CXX=${CROSS_COMPILE}g++
@@ -47,16 +57,22 @@ jobs:
           export AR=${CROSS_COMPILE}ar
           export AS=${CROSS_COMPILE}as
           export RANLIB=${CROSS_COMPILE}ranlib
-          
+
+          # 确保 musl 交叉编译器可用
+          if ! command -v ${CC} >/dev/null; then
+            echo "Error: ${CC} not found."
+            exit 1
+          fi
+
+          # 修改 Makefile 以进行静态编译
           sed -i 's|CC} -o ${GNB_CTL}|CC} -o ${GNB_CTL} -static|' Makefile.openwrt
           sed -i 's|CC} -o ${GNB_ES}|CC} -o ${GNB_ES} -static|' Makefile.openwrt
           sed -i 's|CC} -o ${GNB_CRYPTO}|CC} -o ${GNB_CRYPTO} -static|' Makefile.openwrt
           sed -i 's|CC} -o ${GNB_CLI}|CC} -o ${GNB_CLI} -static|' Makefile.openwrt
-          
+
           make -f Makefile.openwrt clean
           make -f Makefile.openwrt install 
-        shell: bash
-      
+
       - name: Build and Package
         run: |
           mkdir release
