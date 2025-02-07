@@ -25,32 +25,20 @@ jobs:
               autoconf automake texinfo libtool wget curl gawk \
               cmake ninja-build
 
-      - name: Build musl-based mipsel cross-compiler
+      - name: Install pre-built musl-based mipsel cross-compiler (binary)
         run: |
-          # 清理可能存在的临时文件
-          sudo apt-get clean
-          sudo rm -rf /var/lib/apt/lists/*
-          
-          # 下载 musl-cross-make
-          git clone https://github.com/richfelker/musl-cross-make.git
-          cd musl-cross-make
+          # 如果需要，添加非官方源或下载工具链二进制包
+          # 示例：安装包含 mipsel 交叉编译器的包
+          sudo apt-get install -y gcc-mipsel-linux-gnu musl-tools musl-dev
 
-          # 配置 MIPS 交叉编译工具链
-          cat > config.mak <<EOF
-          TARGET = mipsel-linux-musl
-          OUTPUT = $(pwd)/toolchain
-          JOBS = $(nproc)
-          GCC_CONFIG += --enable-languages=c,c++
-          GCC_CONFIG += --with-arch=mips32r2 --with-tune=mips32r2
-          EOF
+          # 验证安装的交叉编译器
+          if ! command -v mipsel-linux-musl-gcc >/dev/null; then
+            echo "Error: mipsel-linux-musl-gcc not found."
+            exit 1
+          fi
 
-          # 编译并安装
-          make -j$(nproc)
-          make install
-
-          # 添加到 PATH
-          echo "$(pwd)/toolchain/bin" >> $GITHUB_PATH
-          echo "TOOLCHAIN_PATH=$(pwd)/toolchain" >> $GITHUB_ENV
+          # 如果安装了 `musl-tools`，它将为您提供需要的工具链
+          echo "Using pre-built musl-based mipsel cross-compiler."
 
       - name: Build binary with musl
         run: |
