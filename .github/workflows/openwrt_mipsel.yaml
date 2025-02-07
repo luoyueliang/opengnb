@@ -1,4 +1,4 @@
-name: Build and Publish mipsel Release for openwrt on mipse 7621
+name: Build and Publish mipsel Release for OpenWRT on MT7621
 
 on:
   workflow_dispatch:
@@ -22,29 +22,36 @@ jobs:
         with:
           go-version: 1.16
           
-      - name: Install mipsel cross-compiler
-        run: sudo apt-get install -y gcc-mipsel-linux-gnu
-      
-      - name: Build binary
+      - name: Install musl-based mipsel cross-compiler
         run: |
-          GCC_MIPS_PATH=$(which mipsel-linux-gnu-gcc)
+          sudo apt-get update
+          sudo apt-get install -y musl-tools
+          wget https://musl.cc/mipsel-linux-musl-cross.tgz
+          tar -xvzf mipsel-linux-musl-cross.tgz
+          echo "$(pwd)/mipsel-linux-musl-cross/bin" >> $GITHUB_PATH
+        
+      - name: Build binary with musl
+        run: |
+          GCC_MIPS_PATH=$(which mipsel-linux-musl-gcc)
           if [ -n "$GCC_MIPS_PATH" ]; then
-            echo "Found gcc-mips-linux-gnu at: $GCC_MIPS_PATH"
+            echo "Found mipsel-linux-musl-gcc at: $GCC_MIPS_PATH"
           else
-            echo "Error: gcc-mips-linux-gnu not found. Please install it or specify the path."
+            echo "Error: mipsel-linux-musl-gcc not found."
             exit 1
           fi 
-          export CROSS_COMPILE=mipsel-linux-gnu-
+          export CROSS_COMPILE=mipsel-linux-musl-
           export CC=${CROSS_COMPILE}gcc
           export CXX=${CROSS_COMPILE}g++
           export LD=${CROSS_COMPILE}ld
           export AR=${CROSS_COMPILE}ar
           export AS=${CROSS_COMPILE}as
           export RANLIB=${CROSS_COMPILE}ranlib
-          sed -i 's|\(CC} -o ${GNB_CTL} ${GNB_CTL_OBJS} ${CLI_LDFLAGS}\)|\1 -static|' Makefile.openwrt
-          sed -i 's|\(CC} -o ${GNB_ES} ${GNB_ES_OBJS} ${CRYPTO_OBJS} ${MINIUPNP_OBJS} ${LIBNATPMP_OBJS} ${GNB_ES_LDFLAGS}\)|\1 -static|' Makefile.openwrt
-          sed -i 's|\(CC} -o ${GNB_CRYPTO} ./src/gnb_crypto.o ${CRYPTO_OBJS} ${CLI_LDFLAGS}\)|\1 -static|' Makefile.openwrt
-          sed -i 's|\(CC} -o ${GNB_CLI} ${GNB_OBJS} ${GNB_CLI_OBJS} ${GNB_PF_OBJS} ${CRYPTO_OBJS} ${ZLIB_OBJS} ${CLI_LDFLAGS}\)|\1 -static|' Makefile.openwrt
+          
+          sed -i 's|CC} -o ${GNB_CTL}|CC} -o ${GNB_CTL} -static|' Makefile.openwrt
+          sed -i 's|CC} -o ${GNB_ES}|CC} -o ${GNB_ES} -static|' Makefile.openwrt
+          sed -i 's|CC} -o ${GNB_CRYPTO}|CC} -o ${GNB_CRYPTO} -static|' Makefile.openwrt
+          sed -i 's|CC} -o ${GNB_CLI}|CC} -o ${GNB_CLI} -static|' Makefile.openwrt
+          
           make -f Makefile.openwrt clean
           make -f Makefile.openwrt install 
         shell: bash
