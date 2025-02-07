@@ -29,20 +29,21 @@ jobs:
         run: |
           # 清理临时文件和上次构建的残留
           sudo rm -rf /tmp/*
-          sudo rm -rf /usr/local/mipsel-linux-musl
+          sudo rm -rf /tmp/mipsel-linux-musl
 
       - name: Download and Extract mipsel-musl toolchain
         run: |
-          # 下载并解压 musl-cross 编译器
-          wget https://musl.cc/mipsel-linux-musl-cross.tgz
+          # 下载并解压 musl-cross 编译器到 /tmp 目录
+          wget https://musl.cc/mipsel-linux-musl-cross.tgz -O /tmp/mipsel-linux-musl-cross.tgz
           
-          # 使用 sudo 提取工具链文件，确保权限正确
-          sudo tar -xvzf mipsel-linux-musl-cross.tgz -C /usr/local/
+          # 解压到 /tmp 目录
+          sudo tar -xvzf /tmp/mipsel-linux-musl-cross.tgz -C /tmp/
 
-          # 确保工具链路径被正确配置
-          export TOOLCHAIN_PATH=/usr/local/mipsel-linux-musl
+          # 设置工具链路径并确保 PATH 包含工具链目录
+          export TOOLCHAIN_PATH=/tmp/mipsel-linux-musl
           export PATH=$PATH:$TOOLCHAIN_PATH/bin
           echo "Toolchain installed in: $TOOLCHAIN_PATH"
+          echo "Updated PATH: $PATH"
 
       - name: Verify toolchain
         run: |
@@ -82,7 +83,6 @@ jobs:
         run: |
           # 清理所有的临时文件以释放磁盘空间
           sudo rm -rf /tmp/*
-          sudo rm -rf /usr/local/mipsel-linux-musl
 
       - name: Build and Package
         run: |
