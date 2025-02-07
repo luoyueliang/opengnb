@@ -27,32 +27,24 @@ jobs:
 
       - name: Clean up previous build artifacts
         run: |
-          # 清理临时文件和上次构建的残留
-          sudo rm -rf /tmp/*
-          sudo rm -rf /tmp/mipsel-linux-musl
+          sudo rm -rf /tmp/mipsel-linux-musl-cross
 
       - name: Download and Extract mipsel-musl toolchain
         run: |
-          # 下载并解压 musl-cross 编译器到 /tmp 目录
           wget https://musl.cc/mipsel-linux-musl-cross.tgz -O /tmp/mipsel-linux-musl-cross.tgz
-          
-          # 解压到 /tmp 目录
           sudo tar -xvzf /tmp/mipsel-linux-musl-cross.tgz -C /tmp/
-
-          # 设置工具链路径并确保 PATH 包含工具链目录
-          export TOOLCHAIN_PATH=/tmp/mipsel-linux-musl
+          export TOOLCHAIN_PATH=/tmp/mipsel-linux-musl-cross
           export PATH=$PATH:$TOOLCHAIN_PATH/bin
           echo "Toolchain installed in: $TOOLCHAIN_PATH"
           echo "Updated PATH: $PATH"
 
       - name: Verify toolchain
         run: |
-          # 确保编译器工具链正确安装
           if ! command -v mipsel-linux-musl-gcc >/dev/null; then
             echo "Error: mipsel-linux-musl-gcc not found."
             exit 1
           fi
-          mipsel-linux-musl-gcc --version  # 显示版本信息来验证安装
+          mipsel-linux-musl-gcc --version
 
       - name: Build binary with musl
         run: |
@@ -64,13 +56,11 @@ jobs:
           export AS=${CROSS_COMPILE}as
           export RANLIB=${CROSS_COMPILE}ranlib
 
-          # 确保 musl 交叉编译器可用
           if ! command -v ${CC} >/dev/null; then
             echo "Error: ${CC} not found."
             exit 1
           fi
 
-          # 修改 Makefile 以进行静态编译
           sed -i 's|CC} -o ${GNB_CTL}|CC} -o ${GNB_CTL} -static|' Makefile.openwrt
           sed -i 's|CC} -o ${GNB_ES}|CC} -o ${GNB_ES} -static|' Makefile.openwrt
           sed -i 's|CC} -o ${GNB_CRYPTO}|CC} -o ${GNB_CRYPTO} -static|' Makefile.openwrt
@@ -81,12 +71,11 @@ jobs:
 
       - name: Clean up temporary files
         run: |
-          # 清理所有的临时文件以释放磁盘空间
-          sudo rm -rf /tmp/*
+          sudo rm -rf /tmp/mipsel-linux-musl-cross
 
       - name: Build and Package
         run: |
-          mkdir release
+          mkdir -p release
           cp -r examples/node_config_example conf
           cp -r bin release/
           cp -r conf release/
