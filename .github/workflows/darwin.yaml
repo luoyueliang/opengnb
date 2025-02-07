@@ -58,7 +58,7 @@ jobs:
           echo "Checking compiler versions:"
           clang --version  # 使用 clang 作为默认编译器来检查版本
           clang++ --version  # 使用 clang++ 来检查 C++ 编译器版本
-          ld --version  # 使用 ld 来检查链接器版本
+          ld -v  # 使用 ld 来检查链接器版本
           echo "Compilers are set correctly"
         shell: /bin/bash -e {0}
         env:
