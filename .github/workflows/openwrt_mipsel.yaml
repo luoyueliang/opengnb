@@ -28,13 +28,26 @@ jobs:
       - name: Download and install pre-built mipsel cross compiler
         run: |
           wget https://musl.cc/mipsel-linux-musl-cross.tgz -O /tmp/mipsel-linux-musl-cross.tgz
+          if [ $? -ne 0 ]; then
+            echo "Error: Failed to download the cross-compiler tarball."
+            exit 1
+          fi
+
           sudo tar -xvzf /tmp/mipsel-linux-musl-cross.tgz -C /usr/local/
+          if [ $? -ne 0 ]; then
+            echo "Error: Failed to extract the cross-compiler."
+            exit 1
+          fi
+
           sudo rm -rf /tmp/mipsel-linux-musl-cross.tgz
           echo "/usr/local/mipsel-linux-musl/bin" >> $GITHUB_PATH
           echo "TOOLCHAIN_PATH=/usr/local/mipsel-linux-musl" >> $GITHUB_ENV
 
-      - name: Verify mipsel-linux-musl-gcc
+      - name: Check mipsel-linux-musl-gcc installation
         run: |
+          echo "Toolchain directory: /usr/local/mipsel-linux-musl/bin"
+          echo "PATH: $PATH"
+
           if ! command -v mipsel-linux-musl-gcc >/dev/null; then
             echo "Error: mipsel-linux-musl-gcc not found."
             exit 1
