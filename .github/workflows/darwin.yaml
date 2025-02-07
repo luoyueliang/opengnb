@@ -56,10 +56,14 @@ jobs:
       - name: Verify tools for macOS
         run: |
           echo "Checking compiler versions:"
-          $CC --version
-          $CXX --version
-          $LD --version
+          clang --version  # 使用 clang 作为默认编译器来检查版本
+          clang++ --version  # 使用 clang++ 来检查 C++ 编译器版本
+          ld --version  # 使用 ld 来检查链接器版本
           echo "Compilers are set correctly"
+        shell: /bin/bash -e {0}
+        env:
+          RELEASE_NAME: opengnb_macos_1.6.a
+          ARCH: arm64
 
       # 构建并打包 x86_64 和 arm64 架构
       - name: Build binary for x86_64 with musl
