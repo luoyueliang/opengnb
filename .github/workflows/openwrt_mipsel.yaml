@@ -27,19 +27,29 @@ jobs:
 
       - name: Download and install pre-built mipsel cross compiler
         run: |
+          # 下载交叉编译工具链
           wget https://musl.cc/mipsel-linux-musl-cross.tgz -O /tmp/mipsel-linux-musl-cross.tgz
           if [ $? -ne 0 ]; then
             echo "Error: Failed to download the cross-compiler tarball."
             exit 1
           fi
 
+          # 解压工具链
           sudo tar -xvzf /tmp/mipsel-linux-musl-cross.tgz -C /usr/local/
           if [ $? -ne 0 ]; then
             echo "Error: Failed to extract the cross-compiler."
             exit 1
           fi
 
+          # 清理临时文件
           sudo rm -rf /tmp/mipsel-linux-musl-cross.tgz
+
+          # 确认工具链目录中的文件
+          echo "Listing files in /usr/local/mipsel-linux-musl/bin:"
+          ls -l /usr/local/mipsel-linux-musl/bin
+
+          # 确保工具链目录权限正确
+          sudo chmod -R 755 /usr/local/mipsel-linux-musl
           echo "/usr/local/mipsel-linux-musl/bin" >> $GITHUB_PATH
           echo "TOOLCHAIN_PATH=/usr/local/mipsel-linux-musl" >> $GITHUB_ENV
 
