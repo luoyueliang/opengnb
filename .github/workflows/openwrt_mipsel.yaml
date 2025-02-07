@@ -35,7 +35,9 @@ jobs:
         run: |
           # 下载并解压 musl-cross 编译器
           wget https://musl.cc/mipsel-linux-musl-cross.tgz
-          tar -xvzf mipsel-linux-musl-cross.tgz -C /usr/local/
+          
+          # 使用 sudo 提取工具链文件，确保权限正确
+          sudo tar -xvzf mipsel-linux-musl-cross.tgz -C /usr/local/
 
           # 确保工具链路径被正确配置
           export TOOLCHAIN_PATH=/usr/local/mipsel-linux-musl
