@@ -5,7 +5,7 @@ on:
 
 jobs:
   build_and_publish_mips_release:
-    runs-on: ubuntu-latest 
+    runs-on: ubuntu-latest
 
     env:
       RELEASE_NAME: opengnb_openwrt_mipsel_1.6.a
@@ -25,20 +25,20 @@ jobs:
               autoconf automake texinfo libtool wget curl gawk \
               cmake ninja-build
 
-      - name: Install pre-built musl-based mipsel cross-compiler (binary)
+      - name: Download and install pre-built mipsel cross compiler
         run: |
-          # 如果需要，添加非官方源或下载工具链二进制包
-          # 示例：安装包含 mipsel 交叉编译器的包
-          sudo apt-get install -y gcc-mipsel-linux-gnu musl-tools musl-dev
+          # 下载交叉编译工具链
+          wget https://musl.cc/mipsel-linux-musl-cross.tgz -O /tmp/mipsel-linux-musl-cross.tgz
+          
+          # 解压工具链并安装
+          sudo tar -xvzf /tmp/mipsel-linux-musl-cross.tgz -C /usr/local/
 
-          # 验证安装的交叉编译器
-          if ! command -v mipsel-linux-musl-gcc >/dev/null; then
-            echo "Error: mipsel-linux-musl-gcc not found."
-            exit 1
-          fi
+          # 清理临时文件
+          sudo rm -rf /tmp/mipsel-linux-musl-cross.tgz
 
-          # 如果安装了 `musl-tools`，它将为您提供需要的工具链
-          echo "Using pre-built musl-based mipsel cross-compiler."
+          # 添加工具链到 PATH
+          echo "/usr/local/mipsel-linux-musl/bin" >> $GITHUB_PATH
+          echo "TOOLCHAIN_PATH=/usr/local/mipsel-linux-musl" >> $GITHUB_ENV
 
       - name: Build binary with musl
         run: |
@@ -63,7 +63,7 @@ jobs:
           sed -i 's|CC} -o ${GNB_CLI}|CC} -o ${GNB_CLI} -static|' Makefile.openwrt
 
           make -f Makefile.openwrt clean
-          make -f Makefile.openwrt install 
+          make -f Makefile.openwrt install
 
       - name: Clean up temporary files
         run: |
@@ -78,13 +78,13 @@ jobs:
           cp -r conf release/
           tar -czvf ${{ env.RELEASE_NAME }}.tar.gz -C release .
         shell: bash
-        
+
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v1
         with:
             files: ${{ env.RELEASE_NAME }}.tar.gz
-            tag_name: v1.6.a  # 你的版本号 
-            body: | 
+            tag_name: v1.6.a  # 你的版本号
+            body: |
               Release notes for v1.6.a
         env:
             GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
