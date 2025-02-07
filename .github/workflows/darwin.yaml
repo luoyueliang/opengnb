@@ -78,8 +78,8 @@ jobs:
           export RANLIB=${CROSS_COMPILE}ranlib
 
           # 清理和编译
-          make clean
-          make install
+          make -f Makefile.Darwin clean
+          make -f Makefile.Darwin install
 
           # 打包 x86_64 架构的二进制文件
           mkdir release
@@ -99,8 +99,8 @@ jobs:
           export RANLIB=${CROSS_COMPILE}ranlib
 
           # 清理和编译
-          make clean
-          make install
+          make -f Makefile.Darwin clean
+          make -f Makefile.Darwin install
 
           # 打包 arm64 架构的二进制文件
           mkdir release
