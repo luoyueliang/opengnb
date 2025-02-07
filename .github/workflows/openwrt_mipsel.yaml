@@ -16,7 +16,7 @@ jobs:
         with:
           repository: luoyueliang/gnb
           token: ${{ secrets.PRIVATE_REPO_PAT }}
-          ref: main  # 指定要检出的分支或提交
+          ref: main
 
       - name: Install dependencies
         run: |
@@ -27,22 +27,22 @@ jobs:
 
       - name: Download and install pre-built mipsel cross compiler
         run: |
-          # 下载交叉编译工具链
           wget https://musl.cc/mipsel-linux-musl-cross.tgz -O /tmp/mipsel-linux-musl-cross.tgz
-          
-          # 解压工具链并安装
           sudo tar -xvzf /tmp/mipsel-linux-musl-cross.tgz -C /usr/local/
-
-          # 清理临时文件
           sudo rm -rf /tmp/mipsel-linux-musl-cross.tgz
-
-          # 添加工具链到 PATH
           echo "/usr/local/mipsel-linux-musl/bin" >> $GITHUB_PATH
           echo "TOOLCHAIN_PATH=/usr/local/mipsel-linux-musl" >> $GITHUB_ENV
 
+      - name: Verify mipsel-linux-musl-gcc
+        run: |
+          if ! command -v mipsel-linux-musl-gcc >/dev/null; then
+            echo "Error: mipsel-linux-musl-gcc not found."
+            exit 1
+          fi
+
       - name: Build binary with musl
         run: |
-          export CROSS_COMPILE=mipsel-linux-musl-
+          export CROSS_COMPILE=/usr/local/mipsel-linux-musl/bin/mipsel-linux-musl-
           export CC=${CROSS_COMPILE}gcc
           export CXX=${CROSS_COMPILE}g++
           export LD=${CROSS_COMPILE}ld
@@ -50,13 +50,11 @@ jobs:
           export AS=${CROSS_COMPILE}as
           export RANLIB=${CROSS_COMPILE}ranlib
 
-          # 确保 musl 交叉编译器可用
           if ! command -v ${CC} >/dev/null; then
             echo "Error: ${CC} not found."
             exit 1
           fi
 
-          # 修改 Makefile 以进行静态编译
           sed -i 's|CC} -o ${GNB_CTL}|CC} -o ${GNB_CTL} -static|' Makefile.openwrt
           sed -i 's|CC} -o ${GNB_ES}|CC} -o ${GNB_ES} -static|' Makefile.openwrt
           sed -i 's|CC} -o ${GNB_CRYPTO}|CC} -o ${GNB_CRYPTO} -static|' Makefile.openwrt
@@ -67,7 +65,6 @@ jobs:
 
       - name: Clean up temporary files
         run: |
-          # 清理所有的临时文件以释放磁盘空间
           sudo rm -rf /tmp/*
 
       - name: Build and Package
@@ -83,7 +80,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
             files: ${{ env.RELEASE_NAME }}.tar.gz
-            tag_name: v1.6.a  # 你的版本号
+            tag_name: v1.6.a
             body: |
               Release notes for v1.6.a
         env:
