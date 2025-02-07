@@ -27,6 +27,10 @@ jobs:
 
       - name: Build musl-based mipsel cross-compiler
         run: |
+          # 清理可能存在的临时文件
+          sudo apt-get clean
+          sudo rm -rf /var/lib/apt/lists/*
+          
           # 下载 musl-cross-make
           git clone https://github.com/richfelker/musl-cross-make.git
           cd musl-cross-make
@@ -72,6 +76,11 @@ jobs:
 
           make -f Makefile.openwrt clean
           make -f Makefile.openwrt install 
+
+      - name: Clean up temporary files
+        run: |
+          # 清理所有的临时文件以释放磁盘空间
+          sudo rm -rf /tmp/*
 
       - name: Build and Package
         run: |
