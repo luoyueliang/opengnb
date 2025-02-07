@@ -25,6 +25,12 @@ jobs:
               autoconf automake texinfo libtool wget curl gawk \
               cmake ninja-build
 
+      - name: Clean up previous build artifacts
+        run: |
+          # 清理临时文件和上次构建的残留
+          sudo rm -rf /tmp/*
+          sudo rm -rf /usr/local/mipsel-linux-musl
+
       - name: Download and Extract mipsel-musl toolchain
         run: |
           # 下载并解压 musl-cross 编译器
@@ -74,6 +80,7 @@ jobs:
         run: |
           # 清理所有的临时文件以释放磁盘空间
           sudo rm -rf /tmp/*
+          sudo rm -rf /usr/local/mipsel-linux-musl
 
       - name: Build and Package
         run: |
