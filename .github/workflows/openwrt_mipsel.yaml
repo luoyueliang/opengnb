@@ -26,7 +26,7 @@ jobs:
       - name: Install musl-based mipsel cross-compiler
         run: |
           sudo apt-get update
-          sudo apt-get install -y musl-tools musl-dev
+          sudo apt-get install -y musl-tools musl-dev gcc-mipsel-linux-musl
           wget https://musl.cc/mipsel-linux-musl-cross.tgz
           tar -xvzf mipsel-linux-musl-cross.tgz
           echo "$(pwd)/mipsel-linux-musl-cross/bin" >> $GITHUB_PATH
