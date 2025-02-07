@@ -1,72 +1,127 @@
-name: Build and Publish Release for MacOS_64
+name: Build and Publish OpenGNB for macOS Intel and Apple Silicon
 
 on:
   workflow_dispatch:
 
 jobs:
-  build_and_publish_release:
-    runs-on: ubuntu-latest 
+  build_and_publish_opengnb:
+    runs-on: macos-latest  # 使用 macOS 环境
 
     env:
-      RELEASE_NAME: Darwin_x86_64_1.4.5.b
+      RELEASE_NAME: opengnb_macos_1.6.a
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
         with:
-          repository: gnbdev/opengnb
-          ref: ver1.4.5.b  # 指定要检出的分支或提交
+          repository: luoyueliang/gnb
+          token: ${{ secrets.PRIVATE_REPO_PAT }}
+          ref: main  # 指定要检出的分支或提交
 
-      - name: Set up Go
-        uses: actions/setup-go@v2
-        with:
-          go-version: 1.16
-          
-      - name: Install Darwin cross-compiler
+      - name: Install dependencies
         run: |
-          sudo apt-get update 
-          sudo apt-get install -y build-essential cmake git
-          sudo apt-get install -y crosstool-ng
-          mkdir ~/x-tools && cd ~/x-tools 
-          cat > ct-ng.config <<EOF
-          CT_ARCH_x86_64=y
-          CT_ARCH_ARCH=""
-          CT_ARCH_BINFMT="elf"
-          CT_ARCH_CPU="x86_64"
-          CT_TARGET_VENDOR="apple"
-          CT_TARGET_SYS="darwin"
-          CT_TARGET_CPU="x86_64"
-          CT_CC_LANG_CXX=y
-          EOF
-          ct-ng x86_64-apple-darwin && ct-ng build
-          export PATH=$HOME/x-tools/x86_64-apple-darwin/bin:$PATH
-        shell: bash
-          
-      - name: Build binary
+          brew install wget cmake ninja
+
+      # 检测 macOS 架构
+      - name: Detect macOS architecture
+        id: arch_detect
         run: |
-          export CC=x86_64-apple-darwin-gcc
-          sed -i 's/^\(CFLAGS.*\)/\1 -static/' Makefile.Darwin
-          sed -i 's/^\(CLI_LDFLAGS.*\)/\1 -static/' Makefile.Darwin
-          sed -i 's/^\(GNB_ES_LDFLAGS.*\)/\1 -static/' Makefile.Darwin
-          make -f Makefile.Darwin clean
-          make -f Makefile.Darwin install 
-        shell: bash
-      
-      - name: Build and Package
+          echo "Architecture: $(uname -m)"
+          echo "ARCH=$(uname -m)" >> $GITHUB_ENV
+
+      # 针对 x86_64 架构的编译
+      - name: Setup cross-compiler for x86_64
+        if: env.ARCH == 'x86_64'
         run: |
+          # 设置编译环境为 x86_64
+          export CC=x86_64-apple-darwin20-clang
+          export CXX=x86_64-apple-darwin20-clang++
+          export LD=x86_64-apple-darwin20-ld
+          export AR=x86_64-apple-darwin20-ar
+          export RANLIB=x86_64-apple-darwin20-ranlib
+          echo "Using x86_64 tools for compilation"
+
+      # 针对 arm64 架构的编译
+      - name: Setup cross-compiler for arm64
+        if: env.ARCH == 'arm64'
+        run: |
+          # 设置编译环境为 arm64
+          export CC=arm64-apple-darwin20-clang
+          export CXX=arm64-apple-darwin20-clang++
+          export LD=arm64-apple-darwin20-ld
+          export AR=arm64-apple-darwin20-ar
+          export RANLIB=arm64-apple-darwin20-ranlib
+          echo "Using arm64 tools for compilation"
+
+      - name: Verify tools for macOS
+        run: |
+          echo "Checking compiler versions:"
+          $CC --version
+          $CXX --version
+          $LD --version
+          echo "Compilers are set correctly"
+
+      # 构建并打包 x86_64 和 arm64 架构
+      - name: Build binary for x86_64 with musl
+        if: env.ARCH == 'x86_64'
+        run: |
+          export CROSS_COMPILE=x86_64-apple-darwin20-
+          export CC=${CROSS_COMPILE}clang
+          export CXX=${CROSS_COMPILE}clang++
+          export LD=${CROSS_COMPILE}ld
+          export AR=${CROSS_COMPILE}ar
+          export AS=${CROSS_COMPILE}as
+          export RANLIB=${CROSS_COMPILE}ranlib
+
+          # 清理和编译
+          make clean
+          make install
+
+          # 打包 x86_64 架构的二进制文件
           mkdir release
-          cp -r examples/node_config_example conf
           cp -r bin release/
-          cp -r conf release/
-          tar -czvf ${{ env.RELEASE_NAME }}.tar.gz -C release .
-        shell: bash
-        
-      - name: Upload Release Asset
+          tar -czvf opengnb_macos_1.6.a_x86_64.tar.gz -C release .
+          echo "x86_64 binary packaged"
+
+      - name: Build binary for arm64 with musl
+        if: env.ARCH == 'arm64'
+        run: |
+          export CROSS_COMPILE=arm64-apple-darwin20-
+          export CC=${CROSS_COMPILE}clang
+          export CXX=${CROSS_COMPILE}clang++
+          export LD=${CROSS_COMPILE}ld
+          export AR=${CROSS_COMPILE}ar
+          export AS=${CROSS_COMPILE}as
+          export RANLIB=${CROSS_COMPILE}ranlib
+
+          # 清理和编译
+          make clean
+          make install
+
+          # 打包 arm64 架构的二进制文件
+          mkdir release
+          cp -r bin release/
+          tar -czvf opengnb_macos_1.6.a_arm64.tar.gz -C release .
+          echo "arm64 binary packaged"
+
+      - name: Upload x86_64 Release Asset
+        if: env.ARCH == 'x86_64'
         uses: softprops/action-gh-release@v1
         with:
-            files: ${{ env.RELEASE_NAME }}.tar.gz
-            tag_name: v1.4.5.b  # 你的版本号 
-            body: | 
-              Release notes for v1.4.5.b
+            files: opengnb_macos_1.6.a_x86_64.tar.gz
+            tag_name: v1.6.a  # 你的版本号
+            body: |
+              Release notes for v1.6.a (x86_64)
+        env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload arm64 Release Asset
+        if: env.ARCH == 'arm64'
+        uses: softprops/action-gh-release@v1
+        with:
+            files: opengnb_macos_1.6.a_arm64.tar.gz
+            tag_name: v1.6.a  # 你的版本号
+            body: |
+              Release notes for v1.6.a (arm64)
         env:
             GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
