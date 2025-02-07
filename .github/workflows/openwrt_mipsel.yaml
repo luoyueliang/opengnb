@@ -16,7 +16,7 @@ jobs:
         with:
           repository: luoyueliang/gnb
           token: ${{ secrets.PRIVATE_REPO_PAT }}
-          ref: master  # 指定要检出的分支或提交
+          ref: main  # 指定要检出的分支或提交
 
       - name: Set up Go
         uses: actions/setup-go@v2
