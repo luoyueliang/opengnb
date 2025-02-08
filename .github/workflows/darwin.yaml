@@ -16,11 +16,24 @@ jobs:
         with:
           repository: luoyueliang/gnb
           token: ${{ secrets.PRIVATE_REPO_PAT }}
-          ref: main  # 指定要检出的分支或提交
+          ref: main
 
       - name: Install dependencies
         run: |
           brew install cmake ninja
+
+      - name: Modify Makefile for static linking
+        run: |
+          echo "🔧 修改 Makefile.Darwin 以强制使用静态库..."
+          sed -i '' 's|-L/usr/lib||g' Makefile.Darwin
+          sed -i '' 's|CLI_LDFLAGS=.*|CLI_LDFLAGS=-pthread -static|g' Makefile.Darwin
+          sed -i '' 's|GNB_ES_LDFLAGS=.*|GNB_ES_LDFLAGS=-pthread -static|g' Makefile.Darwin
+          sed -i '' 's|-lssl|-l:libssl.a|g' Makefile.Darwin
+          sed -i '' 's|-lcrypto|-l:libcrypto.a|g' Makefile.Darwin
+          sed -i '' 's|-lz|-l:libz.a|g' Makefile.Darwin
+          sed -i '' 's|-lminiupnpc|-l:libminiupnpc.a|g' Makefile.Darwin
+          sed -i '' 's|-lnatpmp|-l:libnatpmp.a|g' Makefile.Darwin
+          echo "✅ Makefile.Darwin 修改完成！"
 
       # 编译 x86_64 版本
       - name: Build binary for x86_64
@@ -30,9 +43,18 @@ jobs:
           export LD="ld"
           export AR="ar"
           export RANLIB="ranlib"
-          
+
           make -f Makefile.Darwin clean
           make -f Makefile.Darwin install
+
+          # 检查是否仍然链接动态库
+          echo "🔍 检查 x86_64 版本是否包含动态库..."
+          if otool -L bin/gnb | grep -q ".dylib"; then
+            echo "❌ 仍然依赖动态库！"
+            exit 1
+          else
+            echo "✅ x86_64 版本完全静态！"
+          fi
 
           # 打包 x86_64 版本
           mkdir -p release/macos_x86_64
@@ -51,6 +73,15 @@ jobs:
 
           make -f Makefile.Darwin clean
           make -f Makefile.Darwin install
+
+          # 检查是否仍然链接动态库
+          echo "🔍 检查 arm64 版本是否包含动态库..."
+          if otool -L bin/gnb | grep -q ".dylib"; then
+            echo "❌ 仍然依赖动态库！"
+            exit 1
+          else
+            echo "✅ arm64 版本完全静态！"
+          fi
 
           # 打包 arm64 版本
           mkdir -p release/macos_arm64
