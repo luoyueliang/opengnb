@@ -8,14 +8,15 @@ jobs:
     runs-on: ubuntu-latest 
 
     env:
-      RELEASE_NAME: opengnb_x86_64_1.4.5.b
+      RELEASE_NAME: opengnb_x86_64_1.6.a
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
         with:
-          repository: gnbdev/opengnb
-          ref: ver1.4.5.b  # 指定要检出的分支或提交
+          repository: luoyueliang/gnb
+          token: ${{ secrets.PRIVATE_REPO_PAT }}
+          ref: main  # 指定要检出的分支或提交
 
       - name: Set up Go
         uses: actions/setup-go@v2
@@ -51,6 +52,6 @@ jobs:
             files: ${{ env.RELEASE_NAME }}.tar.gz
             tag_name: v1.4.5.b # 你的版本号 
             body: | 
-              Release notes for v1.4.5.b
+              Release notes for v${{ env.RELEASE_NAME }}
         env:
             GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
