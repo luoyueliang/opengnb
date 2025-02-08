@@ -58,14 +58,6 @@ jobs:
           tar -czvf opengnb_macos_1.6.a_arm64.tar.gz -C release/macos_arm64 .
           echo "✅ arm64 binary built and packaged"
 
-      # 可选：合并为 macOS 通用二进制（Universal Binary）
-      - name: Create Universal Binary (Optional)
-        run: |
-          lipo -create -output opengnb_macos_universal \
-              release/macos_x86_64/bin/opengnb release/macos_arm64/bin/opengnb
-          tar -czvf opengnb_macos_1.6.a_universal.tar.gz opengnb_macos_universal
-          echo "✅ Universal Binary created"
-
       # 上传 x86_64 版本
       - name: Upload x86_64 Release Asset
         uses: softprops/action-gh-release@v1
@@ -85,16 +77,5 @@ jobs:
             tag_name: v1.6.a
             body: |
               Release notes for v1.6.a (arm64)
-        env:
-            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # 上传 macOS 通用二进制（可选）
-      - name: Upload Universal Binary (Optional)
-        uses: softprops/action-gh-release@v1
-        with:
-            files: opengnb_macos_1.6.a_universal.tar.gz
-            tag_name: v1.6.a
-            body: |
-              Release notes for v1.6.a (Universal Binary for Intel & Apple Silicon)
         env:
             GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
