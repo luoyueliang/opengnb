@@ -25,14 +25,10 @@ jobs:
       - name: Modify Makefile for static linking
         run: |
           echo "🔧 修改 Makefile.Darwin 以强制使用静态库..."
-          sed -i '' 's|-L/usr/lib||g' Makefile.Darwin
-          sed -i '' 's|CLI_LDFLAGS=.*|CLI_LDFLAGS=-pthread -static|g' Makefile.Darwin
-          sed -i '' 's|GNB_ES_LDFLAGS=.*|GNB_ES_LDFLAGS=-pthread -static|g' Makefile.Darwin
+          sed -i '' 's|-static||g' Makefile.Darwin
           sed -i '' 's|-lssl|-l:libssl.a|g' Makefile.Darwin
           sed -i '' 's|-lcrypto|-l:libcrypto.a|g' Makefile.Darwin
           sed -i '' 's|-lz|-l:libz.a|g' Makefile.Darwin
-          sed -i '' 's|-lminiupnpc|-l:libminiupnpc.a|g' Makefile.Darwin
-          sed -i '' 's|-lnatpmp|-l:libnatpmp.a|g' Makefile.Darwin
           echo "✅ Makefile.Darwin 修改完成！"
 
       # 编译 x86_64 版本
