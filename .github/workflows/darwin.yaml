@@ -13,6 +13,10 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
+        with:
+          repository: luoyueliang/gnb
+          token: ${{ secrets.PRIVATE_REPO_PAT }}
+          ref: main  # 指定要检出的分支或提交
 
       - name: Install dependencies
         run: |
