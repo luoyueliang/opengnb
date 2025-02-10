@@ -51,8 +51,7 @@ jobs:
       
       - name: Build and Package
         run: |
-          mkdir release
-          cp -r examples/node_config_example conf
+          mkdir release conf 
           cp -r bin release/
           cp -r conf release/
           tar -czvf ${{ env.RELEASE_NAME }}.tar.gz -C release .
