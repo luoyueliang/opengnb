@@ -1,4 +1,4 @@
-name: Build and Publish mipsel Release for OpenWRT on MT7621
+name: OpenWRT on MT7621(JDC Luban) 
 
 on:
   workflow_dispatch:
@@ -27,28 +27,28 @@ jobs:
 
       - name: Clean up previous build artifacts
         run: |
-          sudo rm -rf /tmp/mipsel-linux-musl-cross
+          sudo rm -rf /tmp/mipsel-linux-muslsf-cross
 
       - name: Download and Extract mipsel-musl toolchain
         run: |
           # 下载工具链
-          wget https://musl.cc/mipsel-linux-musl-cross.tgz -O /tmp/mipsel-linux-musl-cross.tgz
-          # 解压到 /tmp/mipsel-linux-musl-cross
-          tar -xvzf /tmp/mipsel-linux-musl-cross.tgz -C /tmp/
+          wget https://musl.cc/mipsel-linux-muslsf-cross.tgz -O /tmp/mipsel-linux-muslsf-cross.tgz
+          # 解压到 /tmp/mipsel-linux-muslsf-cross
+          tar -xvzf /tmp/mipsel-linux-muslsf-cross.tgz -C /tmp/
           # 设置工具链路径并更新 PATH
-          echo "TOOLCHAIN_PATH=/tmp/mipsel-linux-musl-cross" >> $GITHUB_ENV
-          echo "/tmp/mipsel-linux-musl-cross/bin" >> $GITHUB_PATH  # 自动添加工具链到 PATH
+          echo "TOOLCHAIN_PATH=/tmp/mipsel-linux-muslsf-cross" >> $GITHUB_ENV
+          echo "/tmp/mipsel-linux-muslsf-cross/bin" >> $GITHUB_PATH  # 自动添加工具链到 PATH
 
       - name: Verify toolchain
         run: |
           echo "Current PATH: $PATH"
-          ls -l /tmp/mipsel-linux-musl-cross/bin  # 确认文件是否存在
-          command -v mipsel-linux-musl-gcc
-          mipsel-linux-musl-gcc --version
+          ls -l /tmp/mipsel-linux-muslsf-cross/bin  # 确认文件是否存在
+          command -v mipsel-linux-muslsf-gcc
+          mipsel-linux-muslsf-gcc --version
 
       - name: Build binary with musl
         run: |
-          export CROSS_COMPILE=mipsel-linux-musl-
+          export CROSS_COMPILE=mipsel-linux-muslsf-
           export CC=${CROSS_COMPILE}gcc
           export CXX=${CROSS_COMPILE}g++
           export LD=${CROSS_COMPILE}ld
@@ -77,7 +77,7 @@ jobs:
 
       - name: Clean up temporary files
         run: |
-          sudo rm -rf /tmp/mipsel-linux-musl-cross
+          sudo rm -rf /tmp/mipsel-linux-muslsf-cross
 
       - name: Build and Package
         run: |
