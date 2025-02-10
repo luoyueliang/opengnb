@@ -1,4 +1,4 @@
-name: GNB for Winddows._X86_64
+name: GNB for Winddows.X86_64
 
 on:
   workflow_dispatch:
@@ -52,8 +52,7 @@ jobs:
 
       - name: Build and Package Windows release
         run: |
-          mkdir release
-          cp -r examples/node_config_example conf
+          mkdir release conf 
           cp -r bin release/
           cp -r conf release/
           tar -czvf ${{ env.RELEASE_NAME }}.tar.gz -C release .
