@@ -1,4 +1,4 @@
-name: Build and Publish Release for X86_64
+name: GNB for Linux.X86_64
 
 on:
   workflow_dispatch:
