@@ -1,4 +1,4 @@
-name: OpenWRT on MT7621(JDC Luban) 
+name: GNB for OpenWRT.miselsf (eg.JDC Luban) 
 
 on:
   workflow_dispatch:
