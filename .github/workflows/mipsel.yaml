@@ -1,5 +1,4 @@
-name: Build and Publish mipsel Release for er-x
-
+name: GNB for Linux.mipsel
 on:
   workflow_dispatch:
 
