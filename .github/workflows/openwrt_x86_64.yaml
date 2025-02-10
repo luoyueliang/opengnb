@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest 
 
     env:
-      RELEASE_NAME: opengnb_openwrt_x86_64_1.6.a
+      RELEASE_NAME: opengnb_openwrt_X86_64_1.6.a
 
     steps:
       - name: Checkout code
@@ -39,8 +39,7 @@ jobs:
       
       - name: Build and Package
         run: |
-          mkdir release
-          cp -r examples/node_config_example conf
+          mkdir release conf 
           cp -r bin release/
           cp -r conf release/
           tar -czvf ${{ env.RELEASE_NAME }}.tar.gz -C release .
