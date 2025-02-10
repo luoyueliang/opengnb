@@ -1,4 +1,4 @@
-name: Build and Publish mipsel Release for OpenWRT on MT7621
+name: GNB for OpenWRT.mipsel(musl)
 
 on:
   workflow_dispatch:
