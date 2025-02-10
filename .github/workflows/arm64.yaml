@@ -1,4 +1,4 @@
-name: Build and Publish Release for arm64
+name: GNB for Linux.arm64
 
 on:
   workflow_dispatch:
