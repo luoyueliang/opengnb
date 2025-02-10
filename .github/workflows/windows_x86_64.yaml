@@ -1,4 +1,4 @@
-name: Build and Publish Release for opengnb_windows_X86_64
+name: GNB for Winddows._X86_64
 
 on:
   workflow_dispatch:
