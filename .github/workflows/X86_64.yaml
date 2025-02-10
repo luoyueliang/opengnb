@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest 
 
     env:
-      RELEASE_NAME: opengnb_x86_64_1.6.a
+      RELEASE_NAME: opengnb_linux_x86_64_1.6.a
 
     steps:
       - name: Checkout code
