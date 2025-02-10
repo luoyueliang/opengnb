@@ -1,4 +1,4 @@
-name: Build and Publish Release for openwrt_X86_64
+name: GNB for openwrt.X86_64
 
 on:
   workflow_dispatch:
