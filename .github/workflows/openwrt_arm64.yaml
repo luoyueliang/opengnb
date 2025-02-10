@@ -1,4 +1,4 @@
-name: Build and Publish Openwrt_Arm64 Release
+name: GNB fro Openwrt.Arm64
 
 on:
   workflow_dispatch:
