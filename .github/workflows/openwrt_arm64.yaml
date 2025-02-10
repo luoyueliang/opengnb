@@ -1,4 +1,4 @@
-name: GNB fro Openwrt.Arm64
+name: GNB for Openwrt.Arm64
 
 on:
   workflow_dispatch:
