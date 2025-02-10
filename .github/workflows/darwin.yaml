@@ -55,7 +55,7 @@ jobs:
           # 打包 x86_64 版本
           mkdir -p release/macos_x86_64
           cp -r bin release/macos_x86_64/
-          tar -czvf opengnb_macos_1.6.a_x86_64.tar.gz -C release/macos_x86_64 .
+          tar -czvf opengnb_macos_x86_64_1.6.a.tar.gz -C release/macos_x86_64 .
           echo "✅ x86_64 binary built and packaged"
 
       # 编译 arm64 版本
@@ -82,7 +82,7 @@ jobs:
           # 打包 arm64 版本
           mkdir -p release/macos_arm64
           cp -r bin release/macos_arm64/
-          tar -czvf opengnb_macos_1.6.a_arm64.tar.gz -C release/macos_arm64 .
+          tar -czvf opengnb_macos_arm64_1.6.a.tar.gz -C release/macos_arm64 .
           echo "✅ arm64 binary built and packaged"
 
       # 上传 x86_64 版本
