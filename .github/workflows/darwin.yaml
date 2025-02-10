@@ -1,4 +1,4 @@
-name: Build and Publish OpenGNB for macOS Intel and Apple Silicon
+name: GNB for macOS.Intel and MacOS.Apple_Silicon
 
 on:
   workflow_dispatch:
