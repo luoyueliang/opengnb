@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-latest 
 
     env:
-      RELEASE_NAME: opengnb_mipsel_1.6.a
+      RELEASE_NAME: opengnb_linux_mipsel_1.6.a
 
     steps:
       - name: Checkout code
