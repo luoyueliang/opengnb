@@ -1,4 +1,4 @@
-name: GNB for OpenWRT.muslsf (eg.JDC Luban) 
+name: GNB for OpenWRT.muslsf_1.4.5.a (eg.JDC Luban) 
 
 on:
   workflow_dispatch:
