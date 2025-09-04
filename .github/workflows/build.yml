@@ -44,12 +44,12 @@ jobs:
           - { os: openwrt, platform: linux,   arch: mips64el,     ext: tgz,  makefile: Makefile.openwrt }
           - { os: openwrt, platform: linux,   arch: riscv64,      ext: tgz,  makefile: Makefile.openwrt }
           # windows
-          - { os: windows, platform: windows, arch: amd64,        ext: zip,  makefile: Makefile.windows }
-          - { os: windows, platform: windows, arch: arm64,        ext: zip,  makefile: Makefile.windows }
-          - { os: windows, platform: windows, arch: '386',        ext: zip,  makefile: Makefile.windows }
+          - { os: windows, platform: windows, arch: amd64,        ext: zip,  makefile: Makefile.mingw_x86_64 }
+          - { os: windows, platform: windows, arch: arm64,        ext: zip,  makefile: Makefile.mingw_x86_64 }
+          - { os: windows, platform: windows, arch: '386',        ext: zip,  makefile: Makefile.mingw_x86_64 }
           # darwin
-          - { os: darwin,  platform: darwin,  arch: amd64,        ext: tgz,  makefile: Makefile.darwin }
-          - { os: darwin,  platform: darwin,  arch: arm64,        ext: tgz,  makefile: Makefile.darwin }
+          - { os: darwin,  platform: darwin,  arch: amd64,        ext: tgz,  makefile: Makefile.Darwin }
+          - { os: darwin,  platform: darwin,  arch: arm64,        ext: tgz,  makefile: Makefile.Darwin }
           # freebsd
           - { os: freebsd, platform: freebsd, arch: amd64,        ext: tgz,  makefile: Makefile.freebsd }
           - { os: freebsd, platform: freebsd, arch: arm64,        ext: tgz,  makefile: Makefile.freebsd }
@@ -71,14 +71,40 @@ jobs:
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "TAG=$TAG" >> "$GITHUB_ENV"
 
-      - name: Select Makefile and build dirs
+    - name: Select Makefile and build dirs
         id: paths
         run: |
-          MAKEFILE="${{ matrix.makefile }}"
+          MAKEFILE="${{ matrix.makefile }}" # basename located in src/
           OUT_DIR="$GITHUB_WORKSPACE/.out/${{ steps.tag.outputs.tag }}/${{ matrix.os }}/${{ matrix.arch }}"
           PKG_DIR="$GITHUB_WORKSPACE/.pkg/${{ steps.tag.outputs.tag }}"
           mkdir -p "$OUT_DIR" "$PKG_DIR"
-          echo "makefile=$MAKEFILE" >> "$GITHUB_OUTPUT"
+          # Try to resolve the actual Makefile inside SRC_DIR with per-OS candidates
+          SRC_DIR="${{ steps.src.outputs.src_dir }}"
+          OS="${{ matrix.os }}"
+          RESOLVED=""
+          candidates=("$MAKEFILE")
+          case "$OS" in
+            darwin)
+              candidates+=(Makefile.darwin Makefile.Darwin Makefile.mac Makefile.macos Makefile.MacOS)
+              ;;
+            windows)
+              candidates+=(Makefile.windows Makefile.win32 Makefile.mingw Makefile.mingw_x86_64)
+              ;;
+            linux)
+              candidates+=(Makefile.linux)
+              ;;
+            openwrt)
+              candidates+=(Makefile.openwrt)
+              ;;
+            freebsd)
+              candidates+=(Makefile.freebsd)
+              ;;
+          esac
+          for c in "${candidates[@]}"; do
+            if [ -f "$SRC_DIR/$c" ]; then RESOLVED="$c"; break; fi
+          done
+          if [ -z "$RESOLVED" ]; then RESOLVED="$MAKEFILE"; fi
+          echo "makefile=$RESOLVED" >> "$GITHUB_OUTPUT"
           echo "OUT_DIR=$OUT_DIR" >> "$GITHUB_ENV"
           echo "PKG_DIR=$PKG_DIR" >> "$GITHUB_ENV"
 
@@ -104,15 +130,15 @@ jobs:
           OUT_DIR: ${{ env.OUT_DIR }}
           SRC_DIR: ${{ steps.src.outputs.src_dir }}
         run: |
-          if [ ! -f "${{ steps.paths.outputs.makefile }}" ]; then
-            echo "Makefile '${{ steps.paths.outputs.makefile }}' not found. Please add it or adjust workflow mapping." >&2
+          if [ ! -f "$SRC_DIR/${{ steps.paths.outputs.makefile }}" ]; then
+            echo "Makefile '$SRC_DIR/${{ steps.paths.outputs.makefile }}' not found. Looked in src with candidates. Please add it or adjust workflow mapping." >&2
             exit 1
           fi
-          echo "Using ${{ steps.paths.outputs.makefile }}"
+          echo "Using $SRC_DIR/${{ steps.paths.outputs.makefile }}"
           # Assumptions:
           # - Per-OS Makefiles accept variables: OS, ARCH, VERSION, OUT_DIR, SRC_DIR
           # - They produce binaries/files into OUT_DIR
-          make -f "${{ steps.paths.outputs.makefile }}" \
+          make -C "$SRC_DIR" -f "${{ steps.paths.outputs.makefile }}" \
             OS="$TARGET_OS" ARCH="$TARGET_ARCH" VERSION="$VERSION" OUT_DIR="$OUT_DIR" SRC_DIR="$SRC_DIR" VERBOSE=1
 
       - name: Package artifact
