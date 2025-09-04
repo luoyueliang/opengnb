@@ -188,8 +188,7 @@ jobs:
           name: checksums
           path: .release/flat/checksums.txt
 
-      - name: Rsync upload to remote (if configured)
-        if: ${{ secrets.DOWNLOAD_SSH_HOST && secrets.DOWNLOAD_SSH_USER && secrets.DOWNLOAD_SSH_KEY && secrets.DOWNLOAD_SSH_REMOTE_DIR }}
+      - name: Publish via rsync (optional)
         env:
           DOWNLOAD_SSH_HOST: ${{ secrets.DOWNLOAD_SSH_HOST }}
           DOWNLOAD_SSH_USER: ${{ secrets.DOWNLOAD_SSH_USER }}
@@ -198,6 +197,10 @@ jobs:
           TAG: ${{ steps.tag.outputs.tag }}
         run: |
           set -euo pipefail
+          if [ -z "${DOWNLOAD_SSH_HOST:-}" ] || [ -z "${DOWNLOAD_SSH_USER:-}" ] || [ -z "${DOWNLOAD_SSH_KEY:-}" ] || [ -z "${DOWNLOAD_SSH_REMOTE_DIR:-}" ]; then
+            echo "SSH upload is skipped because DOWNLOAD_SSH_* secrets are not fully set."
+            exit 0
+          fi
           echo "Preparing SSH key"
           install -m 700 -d ~/.ssh
           echo "$DOWNLOAD_SSH_KEY" > ~/.ssh/id_rsa
@@ -208,8 +211,3 @@ jobs:
           ssh -i ~/.ssh/id_rsa "$DOWNLOAD_SSH_USER@$DOWNLOAD_SSH_HOST" "mkdir -p '$REMOTE_DIR'"
           echo "Uploading artifacts to $REMOTE_DIR"
           rsync -avz --progress -e "ssh -i ~/.ssh/id_rsa" .release/flat/ "$DOWNLOAD_SSH_USER@$DOWNLOAD_SSH_HOST:$REMOTE_DIR/"
-
-      - name: Skip upload (no SSH secrets)
-        if: ${{ !(secrets.DOWNLOAD_SSH_HOST && secrets.DOWNLOAD_SSH_USER && secrets.DOWNLOAD_SSH_KEY && secrets.DOWNLOAD_SSH_REMOTE_DIR) }}
-        run: |
-          echo "SSH upload is skipped because DOWNLOAD_SSH_* secrets are not fully set."
