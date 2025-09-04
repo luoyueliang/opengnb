@@ -3,6 +3,13 @@ opengnb 构建与发布
 
 这个仓库提供 gnb 的统一构建与发布工作流，按不同 OS 选择对应 Makefile，并输出多架构产物，同时可上传到自定义下载站点。
 
+上游源码
+------
+
+- 原始项目仓库：
+	- gnbdev/opengnb: https://github.com/gnbdev/opengnb
+- 本仓库通过 `scripts/sync_source.sh` 从上游同步指定版本到 `src/`，随后使用 GitHub Actions 进行多平台编译与发布。
+
 工作流位置
 ---------
 
