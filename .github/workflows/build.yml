@@ -18,8 +18,8 @@ jobs:
   build_linux:
     runs-on: ubuntu-latest
     strategy:
-  fail-fast: false
-  max-parallel: 3
+      fail-fast: false
+      max-parallel: 3
       matrix:
         include:
           - { os: linux, platform: linux, arch: amd64,        makefile: Makefile.linux }
@@ -42,7 +42,7 @@ jobs:
         id: tag
         run: echo "tag=${GITHUB_REF##*/}" >> "$GITHUB_OUTPUT"
 
-      - name: Install build dependencies
+  - name: Install build dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential pkg-config wget curl git ca-certificates xz-utils tar
@@ -111,8 +111,8 @@ jobs:
     needs: build_linux
     runs-on: ubuntu-latest
     strategy:
-  fail-fast: false
-  max-parallel: 3
+      fail-fast: false
+      max-parallel: 3
       matrix:
         include:
           - { os: openwrt, platform: linux, arch: amd64,        makefile: Makefile.openwrt }
@@ -217,8 +217,8 @@ jobs:
     needs: build_openwrt
     runs-on: macos-latest
     strategy:
-  fail-fast: false
-  max-parallel: 3
+      fail-fast: false
+      max-parallel: 3
       matrix:
         include:
           - { os: darwin, platform: darwin, arch: amd64, makefile: Makefile.Darwin }
@@ -275,8 +275,8 @@ jobs:
     needs: build_darwin
     runs-on: ubuntu-latest
     strategy:
-  fail-fast: false
-  max-parallel: 3
+      fail-fast: false
+      max-parallel: 3
       matrix:
         include:
           - { os: windows, platform: windows, arch: amd64, makefile: Makefile.mingw_x86_64 }
@@ -338,8 +338,8 @@ jobs:
     needs: build_windows
     runs-on: ubuntu-latest
     strategy:
-  fail-fast: false
-  max-parallel: 3
+      fail-fast: false
+      max-parallel: 3
       matrix:
         include:
           - { os: freebsd, platform: freebsd, arch: amd64, makefile: Makefile.freebsd }
