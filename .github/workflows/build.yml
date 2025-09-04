@@ -15,13 +15,13 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build_linux:
+  build:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      max-parallel: 3
       matrix:
         include:
+          # Linux
           - { os: linux, platform: linux, arch: amd64,        makefile: Makefile.linux }
           - { os: linux, platform: linux, arch: arm64,        makefile: Makefile.linux }
           - { os: linux, platform: linux, arch: armv7-softfp, makefile: Makefile.linux }
@@ -31,6 +31,27 @@ jobs:
           - { os: linux, platform: linux, arch: mips64,       makefile: Makefile.linux }
           - { os: linux, platform: linux, arch: mips64el,     makefile: Makefile.linux }
           - { os: linux, platform: linux, arch: riscv64,      makefile: Makefile.linux }
+          # OpenWrt
+          - { os: openwrt, platform: linux, arch: amd64,        makefile: Makefile.openwrt }
+          - { os: openwrt, platform: linux, arch: arm64,        makefile: Makefile.openwrt }
+          - { os: openwrt, platform: linux, arch: armv7-softfp, makefile: Makefile.openwrt }
+          - { os: openwrt, platform: linux, arch: armv7-hardfp, makefile: Makefile.openwrt }
+          - { os: openwrt, platform: linux, arch: mips,         makefile: Makefile.openwrt }
+          - { os: openwrt, platform: linux, arch: mipsel,       makefile: Makefile.openwrt }
+          - { os: openwrt, platform: linux, arch: mips64,       makefile: Makefile.openwrt }
+          - { os: openwrt, platform: linux, arch: mips64el,     makefile: Makefile.openwrt }
+          - { os: openwrt, platform: linux, arch: riscv64,      makefile: Makefile.openwrt }
+          # Darwin
+          - { os: darwin, platform: darwin, arch: amd64, makefile: Makefile.Darwin }
+          - { os: darwin, platform: darwin, arch: arm64, makefile: Makefile.Darwin }
+          # Windows
+          - { os: windows, platform: windows, arch: amd64, makefile: Makefile.mingw_x86_64 }
+          - { os: windows, platform: windows, arch: 386,   makefile: Makefile.mingw_x86_64 }
+          - { os: windows, platform: windows, arch: arm64, makefile: Makefile.mingw_x86_64 }
+          # FreeBSD
+          - { os: freebsd, platform: freebsd, arch: amd64, makefile: Makefile.freebsd }
+          - { os: freebsd, platform: freebsd, arch: arm64, makefile: Makefile.freebsd }
+
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
@@ -42,7 +63,8 @@ jobs:
         id: tag
         run: echo "tag=${GITHUB_REF##*/}" >> "$GITHUB_OUTPUT"
 
-  - name: Install build dependencies
+      - name: Install dependencies
+        if: matrix.os != 'darwin'
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential pkg-config wget curl git ca-certificates xz-utils tar
@@ -50,8 +72,22 @@ jobs:
           sudo apt-get install -y gcc-mips-linux-gnu gcc-mipsel-linux-gnu gcc-mips64-linux-gnuabi64 gcc-mips64el-linux-gnuabi64 || true
           sudo apt-get install -y gcc-riscv64-linux-gnu || true
 
-      - name: Setup cross compiler and static flags (Linux)
+      - name: Install dependencies (macOS)
+        if: matrix.os == 'darwin'
         run: |
+          brew update
+          brew install cmake ninja || true
+
+      - name: Cache OpenWrt musl toolchains
+        if: matrix.os == 'openwrt'
+        uses: actions/cache@v3
+        with:
+          path: /tmp/musl-cross-${{ matrix.arch }}
+          key: openwrt-musl-${{ matrix.arch }}-${{ runner.os }}-v1
+
+      - name: Setup cross compiler and static flags
+        run: |
+          # Cross compiler
           case "${{ matrix.arch }}" in
             amd64)        export CC=gcc ;;
             arm64)        export CC=aarch64-linux-gnu-gcc ;;
@@ -68,122 +104,22 @@ jobs:
           export AR=${CC/gcc/ar}
           export RANLIB=${CC/gcc/ranlib}
 
-          # Linux/FreeBSD/OpenWrt/Windows static
+          # Static linking tweaks
           case "${{ matrix.os }}" in
-            linux)
+            linux|freebsd|openwrt|windows)
               sed -i "s|CC} -o ${GNB_CTL}|CC} -o ${GNB_CTL} -static|g" ${{ matrix.makefile }} || true
               sed -i "s|CC} -o ${GNB_ES}|CC} -o ${GNB_ES} -static|g" ${{ matrix.makefile }} || true
               sed -i "s|CC} -o ${GNB_CRYPTO}|CC} -o ${GNB_CRYPTO} -static|g" ${{ matrix.makefile }} || true
               sed -i "s|CC} -o ${GNB_CLI}|CC} -o ${GNB_CLI} -static|g" ${{ matrix.makefile }} || true
               ;;
-          esac
-
-          echo "CC=$CC" >> $GITHUB_ENV
-          echo "CXX=$CXX" >> $GITHUB_ENV
-          echo "AR=$AR" >> $GITHUB_ENV
-          echo "RANLIB=$RANLIB" >> $GITHUB_ENV
-
-      - name: Build
-        run: |
-          OUT_DIR="$GITHUB_WORKSPACE/.out/${{ steps.tag.outputs.tag }}/${{ matrix.os }}/${{ matrix.arch }}"
-          PKG_DIR="$GITHUB_WORKSPACE/.pkg/${{ steps.tag.outputs.tag }}"
-          mkdir -p "$OUT_DIR" "$PKG_DIR"
-
-          make -f "${{ matrix.makefile }}" clean
-          make -f "${{ matrix.makefile }}" install
-          if [ -d bin ]; then mv bin/* "$OUT_DIR/"; fi
-
-      - name: Package
-        run: |
-          OUT_DIR="$GITHUB_WORKSPACE/.out/${{ steps.tag.outputs.tag }}/${{ matrix.os }}/${{ matrix.arch }}"
-          PKG_DIR="$GITHUB_WORKSPACE/.pkg/${{ steps.tag.outputs.tag }}"
-          ARCHIVE="${PROJECT}_${{ matrix.os }}_${{ matrix.arch }}_${{ steps.tag.outputs.tag }}.tar.gz"
-          tar -czvf "$ARCHIVE" -C "$OUT_DIR" .
-          mv "$ARCHIVE" "$PKG_DIR/"
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: gnb-${{ matrix.os }}-${{ matrix.arch }}
-          path: .pkg/${{ steps.tag.outputs.tag }}/*
-
-  build_openwrt:
-    needs: build_linux
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      max-parallel: 3
-      matrix:
-        include:
-          - { os: openwrt, platform: linux, arch: amd64,        makefile: Makefile.openwrt }
-          - { os: openwrt, platform: linux, arch: arm64,        makefile: Makefile.openwrt }
-          - { os: openwrt, platform: linux, arch: armv7-softfp, makefile: Makefile.openwrt }
-          - { os: openwrt, platform: linux, arch: armv7-hardfp, makefile: Makefile.openwrt }
-          - { os: openwrt, platform: linux, arch: mips,         makefile: Makefile.openwrt }
-          - { os: openwrt, platform: linux, arch: mipsel,       makefile: Makefile.openwrt }
-          - { os: openwrt, platform: linux, arch: mips64,       makefile: Makefile.openwrt }
-          - { os: openwrt, platform: linux, arch: mips64el,     makefile: Makefile.openwrt }
-          - { os: openwrt, platform: linux, arch: riscv64,      makefile: Makefile.openwrt }
-    steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
-        with:
-          repository: luoyueliang/gnb
-          token: ${{ secrets.PRIVATE_REPO_PAT }}
-
-      - name: Extract tag
-        id: tag
-        run: echo "tag=${GITHUB_REF##*/}" >> "$GITHUB_OUTPUT"
-
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential pkg-config wget curl git ca-certificates xz-utils tar
-          sudo apt-get install -y gcc-aarch64-linux-gnu gcc-arm-linux-gnueabihf || true
-          sudo apt-get install -y gcc-mips-linux-gnu gcc-mipsel-linux-gnu gcc-mips64-linux-gnuabi64 gcc-mips64el-linux-gnuabi64 || true
-          sudo apt-get install -y gcc-riscv64-linux-gnu || true
-
-      - name: Cache OpenWrt musl toolchains
-        uses: actions/cache@v3
-        with:
-          path: /tmp/musl-cross-${{ matrix.arch }}
-          key: openwrt-musl-${{ matrix.arch }}-${{ runner.os }}-v1
-
-      - name: Setup cross compiler and static flags (OpenWrt)
-        run: |
-          case "${{ matrix.arch }}" in
-            amd64) export CC=gcc ;;
-            arm64) export CC=aarch64-linux-gnu-gcc ;;
-            armv7-softfp|armv7-hardfp) export CC=arm-linux-gnueabihf-gcc ;;
-            mips) export CC=mips-linux-gnu-gcc ;;
-            mipsel)
-              TOOL=/tmp/mipsel-linux-musl-cross
-              if [ ! -d "$TOOL" ]; then
-                wget -q https://musl.cc/mipsel-linux-musl-cross.tgz -O /tmp/mipsel-linux-musl-cross.tgz
-                tar -xzf /tmp/mipsel-linux-musl-cross.tgz -C /tmp/
-              fi
-              echo "$TOOL/bin" >> $GITHUB_PATH
-              export CROSS_COMPILE=mipsel-linux-musl-
-              export CC=${CROSS_COMPILE}gcc
-              export CXX=${CROSS_COMPILE}g++
-              export AR=${CROSS_COMPILE}ar
-              export AS=${CROSS_COMPILE}as
-              export LD=${CROSS_COMPILE}ld
-              export RANLIB=${CROSS_COMPILE}ranlib
+            darwin)
+              sed -i '' 's|-static||g' ${{ matrix.makefile }} || true
+              sed -i '' 's|-lssl|-l:libssl.a|g' ${{ matrix.makefile }} || true
+              sed -i '' 's|-lcrypto|-l:libcrypto.a|g' ${{ matrix.makefile }} || true
+              sed -i '' 's|-lz|-l:libz.a|g' ${{ matrix.makefile }} || true
               ;;
-            mips64) export CC=mips64-linux-gnuabi64-gcc ;;
-            mips64el) export CC=mips64el-linux-gnuabi64-gcc ;;
-            riscv64) export CC=riscv64-linux-gnu-gcc ;;
           esac
 
-          sed -i "s|CC} -o ${GNB_CTL}|CC} -o ${GNB_CTL} -static|g" ${{ matrix.makefile }} || true
-          sed -i "s|CC} -o ${GNB_ES}|CC} -o ${GNB_ES} -static|g" ${{ matrix.makefile }} || true
-          sed -i "s|CC} -o ${GNB_CRYPTO}|CC} -o ${GNB_CRYPTO} -static|g" ${{ matrix.makefile }} || true
-          sed -i "s|CC} -o ${GNB_CLI}|CC} -o ${GNB_CLI} -static|g" ${{ matrix.makefile }} || true
-
-          export CXX=${CXX:-${CC/gcc/g++}}
-          export AR=${AR:-${CC/gcc/ar}}
-          export RANLIB=${RANLIB:-${CC/gcc/ranlib}}
           echo "CC=$CC" >> $GITHUB_ENV
           echo "CXX=$CXX" >> $GITHUB_ENV
           echo "AR=$AR" >> $GITHUB_ENV
@@ -195,194 +131,6 @@ jobs:
           PKG_DIR="$GITHUB_WORKSPACE/.pkg/${{ steps.tag.outputs.tag }}"
           mkdir -p "$OUT_DIR" "$PKG_DIR"
 
-          make -f "${{ matrix.makefile }}" clean
-          make -f "${{ matrix.makefile }}" install
-          if [ -d bin ]; then mv bin/* "$OUT_DIR/"; fi
-
-      - name: Package
-        run: |
-          OUT_DIR="$GITHUB_WORKSPACE/.out/${{ steps.tag.outputs.tag }}/${{ matrix.os }}/${{ matrix.arch }}"
-          PKG_DIR="$GITHUB_WORKSPACE/.pkg/${{ steps.tag.outputs.tag }}"
-          ARCHIVE="${PROJECT}_${{ matrix.os }}_${{ matrix.arch }}_${{ steps.tag.outputs.tag }}.tar.gz"
-          tar -czvf "$ARCHIVE" -C "$OUT_DIR" .
-          mv "$ARCHIVE" "$PKG_DIR/"
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: gnb-${{ matrix.os }}-${{ matrix.arch }}
-          path: .pkg/${{ steps.tag.outputs.tag }}/*
-
-  build_darwin:
-    needs: build_openwrt
-    runs-on: macos-latest
-    strategy:
-      fail-fast: false
-      max-parallel: 3
-      matrix:
-        include:
-          - { os: darwin, platform: darwin, arch: amd64, makefile: Makefile.Darwin }
-          - { os: darwin, platform: darwin, arch: arm64, makefile: Makefile.Darwin }
-    steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
-        with:
-          repository: luoyueliang/gnb
-          token: ${{ secrets.PRIVATE_REPO_PAT }}
-
-      - name: Extract tag
-        id: tag
-        run: echo "tag=${GITHUB_REF##*/}" >> "$GITHUB_OUTPUT"
-
-      - name: Install dependencies (macOS)
-        run: |
-          brew update
-          brew install cmake ninja || true
-
-      - name: Darwin static link tweaks
-        run: |
-          if [ -f ${{ matrix.makefile }} ]; then
-            sed -i '' 's|-static||g' ${{ matrix.makefile }} || true
-            sed -i '' 's|-lssl|-l:libssl.a|g' ${{ matrix.makefile }} || true
-            sed -i '' 's|-lcrypto|-l:libcrypto.a|g' ${{ matrix.makefile }} || true
-            sed -i '' 's|-lz|-l:libz.a|g' ${{ matrix.makefile }} || true
-          fi
-
-      - name: Build
-        run: |
-          OUT_DIR="$GITHUB_WORKSPACE/.out/${{ steps.tag.outputs.tag }}/${{ matrix.os }}/${{ matrix.arch }}"
-          PKG_DIR="$GITHUB_WORKSPACE/.pkg/${{ steps.tag.outputs.tag }}"
-          mkdir -p "$OUT_DIR" "$PKG_DIR"
-          make -f "${{ matrix.makefile }}" clean
-          make -f "${{ matrix.makefile }}" install
-          if [ -d bin ]; then mv bin/* "$OUT_DIR/"; fi
-
-      - name: Package
-        run: |
-          OUT_DIR="$GITHUB_WORKSPACE/.out/${{ steps.tag.outputs.tag }}/${{ matrix.os }}/${{ matrix.arch }}"
-          PKG_DIR="$GITHUB_WORKSPACE/.pkg/${{ steps.tag.outputs.tag }}"
-          ARCHIVE="${PROJECT}_${{ matrix.os }}_${{ matrix.arch }}_${{ steps.tag.outputs.tag }}.tar.gz"
-          tar -czvf "$ARCHIVE" -C "$OUT_DIR" .
-          mv "$ARCHIVE" "$PKG_DIR/"
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: gnb-${{ matrix.os }}-${{ matrix.arch }}
-          path: .pkg/${{ steps.tag.outputs.tag }}/*
-
-  build_windows:
-    needs: build_darwin
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      max-parallel: 3
-      matrix:
-        include:
-          - { os: windows, platform: windows, arch: amd64, makefile: Makefile.mingw_x86_64 }
-          - { os: windows, platform: windows, arch: 386,   makefile: Makefile.mingw_x86_64 }
-          - { os: windows, platform: windows, arch: arm64, makefile: Makefile.mingw_x86_64 }
-    steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
-        with:
-          repository: luoyueliang/gnb
-          token: ${{ secrets.PRIVATE_REPO_PAT }}
-
-      - name: Extract tag
-        id: tag
-        run: echo "tag=${GITHUB_REF##*/}" >> "$GITHUB_OUTPUT"
-
-      - name: Install MinGW
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential pkg-config mingw-w64 wget curl git ca-certificates
-
-      - name: Setup Windows toolchain and static flags
-        run: |
-          case "${{ matrix.arch }}" in
-            amd64) PREFIX=x86_64-w64-mingw32 ;;
-            386)   PREFIX=i686-w64-mingw32   ;;
-            arm64) PREFIX=aarch64-w64-mingw32;;
-          esac
-          echo "/usr/${PREFIX}/bin" >> $GITHUB_PATH
-          sed -i 's|CC} -o ${GNB_CTL}|CC} -o ${GNB_CTL} -static|g' ${{ matrix.makefile }} || true
-          sed -i 's|CC} -o ${GNB_ES}|CC} -o ${GNB_ES} -static|g' ${{ matrix.makefile }} || true
-          sed -i 's|CC} -o ${GNB_CRYPTO}|CC} -o ${GNB_CRYPTO} -static|g' ${{ matrix.makefile }} || true
-          sed -i 's|CC} -o ${GNB_CLI}|CC} -o ${GNB_CLI} -static|g' ${{ matrix.makefile }} || true
-
-      - name: Build
-        run: |
-          OUT_DIR="$GITHUB_WORKSPACE/.out/${{ steps.tag.outputs.tag }}/${{ matrix.os }}/${{ matrix.arch }}"
-          PKG_DIR="$GITHUB_WORKSPACE/.pkg/${{ steps.tag.outputs.tag }}"
-          mkdir -p "$OUT_DIR" "$PKG_DIR"
-          make -f "${{ matrix.makefile }}" clean
-          make -f "${{ matrix.makefile }}" install
-          if [ -d bin ]; then mv bin/* "$OUT_DIR/"; fi
-
-      - name: Package
-        run: |
-          OUT_DIR="$GITHUB_WORKSPACE/.out/${{ steps.tag.outputs.tag }}/${{ matrix.os }}/${{ matrix.arch }}"
-          PKG_DIR="$GITHUB_WORKSPACE/.pkg/${{ steps.tag.outputs.tag }}"
-          ARCHIVE="${PROJECT}_${{ matrix.os }}_${{ matrix.arch }}_${{ steps.tag.outputs.tag }}.tar.gz"
-          tar -czvf "$ARCHIVE" -C "$OUT_DIR" .
-          mv "$ARCHIVE" "$PKG_DIR/"
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: gnb-${{ matrix.os }}-${{ matrix.arch }}
-          path: .pkg/${{ steps.tag.outputs.tag }}/*
-
-  build_freebsd:
-    needs: build_windows
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      max-parallel: 3
-      matrix:
-        include:
-          - { os: freebsd, platform: freebsd, arch: amd64, makefile: Makefile.freebsd }
-          - { os: freebsd, platform: freebsd, arch: arm64, makefile: Makefile.freebsd }
-    steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
-        with:
-          repository: luoyueliang/gnb
-          token: ${{ secrets.PRIVATE_REPO_PAT }}
-
-      - name: Extract tag
-        id: tag
-        run: echo "tag=${GITHUB_REF##*/}" >> "$GITHUB_OUTPUT"
-
-      - name: Install deps
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential pkg-config wget curl git ca-certificates xz-utils tar
-
-      - name: Setup cross compiler and static flags (FreeBSD)
-        run: |
-          case "${{ matrix.arch }}" in
-            amd64) export CC=gcc ;;
-            arm64) export CC=aarch64-linux-gnu-gcc ;;
-          esac
-          export CXX=${CC/gcc/g++}
-          export AR=${CC/gcc/ar}
-          export RANLIB=${CC/gcc/ranlib}
-          sed -i "s|CC} -o ${GNB_CTL}|CC} -o ${GNB_CTL} -static|g" ${{ matrix.makefile }} || true
-          sed -i "s|CC} -o ${GNB_ES}|CC} -o ${GNB_ES} -static|g" ${{ matrix.makefile }} || true
-          sed -i "s|CC} -o ${GNB_CRYPTO}|CC} -o ${GNB_CRYPTO} -static|g" ${{ matrix.makefile }} || true
-          sed -i "s|CC} -o ${GNB_CLI}|CC} -o ${GNB_CLI} -static|g" ${{ matrix.makefile }} || true
-          echo "CC=$CC" >> $GITHUB_ENV
-          echo "CXX=$CXX" >> $GITHUB_ENV
-          echo "AR=$AR" >> $GITHUB_ENV
-          echo "RANLIB=$RANLIB" >> $GITHUB_ENV
-
-      - name: Build
-        run: |
-          OUT_DIR="$GITHUB_WORKSPACE/.out/${{ steps.tag.outputs.tag }}/${{ matrix.os }}/${{ matrix.arch }}"
-          PKG_DIR="$GITHUB_WORKSPACE/.pkg/${{ steps.tag.outputs.tag }}"
-          mkdir -p "$OUT_DIR" "$PKG_DIR"
           make -f "${{ matrix.makefile }}" clean
           make -f "${{ matrix.makefile }}" install
           if [ -d bin ]; then mv bin/* "$OUT_DIR/"; fi
@@ -402,7 +150,7 @@ jobs:
           path: .pkg/${{ steps.tag.outputs.tag }}/*
 
   publish:
-    needs: build_freebsd
+    needs: build
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts
