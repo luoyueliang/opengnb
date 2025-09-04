@@ -4,7 +4,7 @@ set -euo pipefail
 # Sync external source repo into local ./src, commit, tag, and record mapping.
 #
 # Usage:
-#   scripts/sync_source.sh [--subdir path/in/repo] [--push] [--push-remote origin] [--push-branch <branch>] [--yes]
+#   scripts/sync_source.sh [--subdir path/in/repo] [--yes]
 #
 # Notes:
 # - Creates/updates ./src with contents from the external repo (subdir if provided).
@@ -13,18 +13,15 @@ set -euo pipefail
 # - Appends a JSON line to sources/history.ndjson for traceability.
 
 usage() {
-  echo "Usage: $0 [--subdir <path>] [--push] [--push-remote origin] [--push-branch <branch>] [--yes]" 1>&2
-  echo "       Interactive wizard will list source tags from gnbdev/opengnb and target tags in this repo." 1>&2
+  echo "Usage: $0 [--subdir <path>] [--yes]" 1>&2
+  echo "       Interactive wizard will list source tags from gnbdev/opengnb and target tags in this repo, and optionally push at the end." 1>&2
   exit 1
 }
 
-REPO="gnbdev/opengnb"; REF=""; SUBDIR="."; VERSION=""; ASSUME_YES=0; PUSH=0; PUSH_REMOTE="origin"; PUSH_BRANCH=""
+REPO="gnbdev/opengnb"; REF=""; SUBDIR="."; VERSION=""; ASSUME_YES=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --subdir) SUBDIR="$2"; shift 2 ;;
-    --push) PUSH=1; shift ;;
-    --push-remote) PUSH_REMOTE="$2"; shift 2 ;;
-    --push-branch) PUSH_BRANCH="$2"; shift 2 ;;
     --yes|-y) ASSUME_YES=1; shift ;;
     -h|--help) usage ;;
     *) echo "Unknown arg: $1"; usage ;;
@@ -194,70 +191,120 @@ cd "$ROOT_DIR"
 git add -A "$SRC_DIR"
 
 DIFF_PREV=$(git rev-parse --short=12 HEAD 2>/dev/null || echo "")
+MADE_COMMIT=0
 if git diff --cached --quiet; then
   echo "No changes detected in src; nothing to commit."
-  LOCAL_SHA=$(git rev-parse --short=12 HEAD)
+  SRC_COMMIT=$(git rev-parse --short=12 HEAD)
 else
   MSG="sync(src): ${REPO}@${REF} (${SRC_SHA}) -> src/"
   if [[ -n "$VERSION" ]]; then MSG+=" [version ${VERSION}]"; fi
   git commit -m "$MSG"
-  LOCAL_SHA=$(git rev-parse --short=12 HEAD)
+  SRC_COMMIT=$(git rev-parse --short=12 HEAD)
+  MADE_COMMIT=1
 fi
 
-# Tag
-TAG_BASE="src-sync/"$( [[ -n "$VERSION" ]] && echo "$VERSION" || echo "$REF" )
-TAG_NAME="$TAG_BASE"
+# Prepare tag name (use target tag chosen by user) and create/move tag
+TAG_NAME="$VERSION"
 if git rev-parse -q --verify "refs/tags/$TAG_NAME" >/dev/null; then
-  TAG_NAME+="-$(date +%Y%m%d%H%M%S)"
+  OLD_TAG_COMMIT=$(git rev-parse --short=12 "refs/tags/$TAG_NAME^{commit}" || true)
+  echo "Tag '$TAG_NAME' already exists at $OLD_TAG_COMMIT."
+  if confirm "Move tag '$TAG_NAME' to $SRC_COMMIT? (a backup tag will be created)"; then
+    BK_TAG="backup/${TAG_NAME}-$(date +%Y%m%d%H%M%S)"
+    git tag "$BK_TAG" "refs/tags/$TAG_NAME" -m "Backup of ${TAG_NAME} before retag"
+    git tag -fa "$TAG_NAME" "$SRC_COMMIT" -m "Source sync from ${REPO}@${REF} (${SRC_SHA})"
+    echo "Moved tag '$TAG_NAME' (backup saved as '$BK_TAG')."
+  else
+    echo "Aborted retagging. Exiting."
+    exit 1
+  fi
+else
+  git tag -a "$TAG_NAME" "$SRC_COMMIT" -m "Source sync from ${REPO}@${REF} (${SRC_SHA})"
+  echo "Created tag '$TAG_NAME' -> $SRC_COMMIT"
 fi
-git tag "$TAG_NAME" -m "Source sync from ${REPO}@${REF} (${SRC_SHA})"
 
-# Diffstat for record
+# Diffstat for record (from previous HEAD to SRC_COMMIT if we committed)
 DIFFSTAT=""
 if [[ -n "$DIFF_PREV" ]]; then
-  DIFFSTAT=$(git --no-pager diff --stat "$DIFF_PREV..HEAD" | tr '\n' ' ' | sed -E 's/\s+/ /g')
+  if [[ $MADE_COMMIT -eq 1 ]]; then
+    DIFFSTAT=$(git --no-pager diff --stat "$DIFF_PREV..$SRC_COMMIT" | tr '\n' ' ' | sed -E 's/\s+/ /g')
+  else
+    DIFFSTAT="(no changes)"
+  fi
 fi
 
-# Record history (ndjson)
+# Record history (ndjson) and commit as a separate history commit
 TS=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 cat >> "$HIST_FILE" <<EOF
-{"timestamp":"$TS","source":{"repo":"$REPO","ref":"$REF","commit":"$SRC_SHA","subdir":"$SUBDIR"},"local":{"commit":"$LOCAL_SHA","tag":"$TAG_NAME"},"paths":{"dest":"src"},"diffstat":"$DIFFSTAT"}
+{"timestamp":"$TS","source":{"repo":"$REPO","ref":"$REF","commit":"$SRC_SHA","subdir":"$SUBDIR"},"local":{"commit":"$SRC_COMMIT","tag":"$TAG_NAME"},"paths":{"dest":"src"},"diffstat":"$DIFFSTAT"}
 EOF
+git add "$HIST_FILE"
+git commit -m "chore(history): record source sync for ${REPO}@${REF} -> ${TAG_NAME}"
+LOCAL_SHA=$(git rev-parse --short=12 HEAD)
 
-echo "Done. Local commit: $LOCAL_SHA, tag: $TAG_NAME"
+echo "Done. Source commit: $SRC_COMMIT, tag: $TAG_NAME, history commit: $LOCAL_SHA"
 echo "History appended to: $HIST_FILE"
 
-# Optional push
-if [[ $PUSH -eq 1 ]]; then
-  # Determine branch
-  CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD || echo HEAD)
-  if [[ -z "$PUSH_BRANCH" ]]; then
-    PUSH_BRANCH="$CURRENT_BRANCH"
-  fi
-  if [[ "$PUSH_BRANCH" == "HEAD" || -z "$PUSH_BRANCH" ]]; then
-    echo "Cannot determine current branch (detached HEAD). Use --push-branch <branch>." 1>&2
-    exit 2
-  fi
-  # Remote check
-  if ! git remote get-url "$PUSH_REMOTE" >/dev/null 2>&1; then
-    echo "Remote '$PUSH_REMOTE' not found. Use --push-remote to specify." 1>&2
-    exit 2
-  fi
-  echo "Plan to push commit/tag:"
-  echo "  Remote : $PUSH_REMOTE"
-  echo "  Branch : $PUSH_BRANCH"
-  echo "  Tag    : $TAG_NAME"
-  if ! confirm "Push to $PUSH_REMOTE/$PUSH_BRANCH and push tag $TAG_NAME?"; then
-    echo "Skip pushing."; exit 0
-  fi
-  set -e
-  # Push branch (create upstream if missing)
-  if git rev-parse --abbrev-ref --symbolic-full-name "@{u}" >/dev/null 2>&1; then
-    git push "$PUSH_REMOTE" "$PUSH_BRANCH"
+# Interactive push prompt (no CLI flags) 
+if is_tty; then
+  echo
+  echo "Do you want to push the branch and tag now?"
+  if confirm "Push to remote?"; then
+    # Determine branch
+    CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo HEAD)
+    if [[ "$CURRENT_BRANCH" == "HEAD" || -z "$CURRENT_BRANCH" ]]; then
+      # List local branches
+      echo "Select a local branch to push:" 
+      LOCAL_BRANCHES=()
+      while IFS= read -r _b; do [[ -n "$_b" ]] && LOCAL_BRANCHES+=("$_b"); done < <(git for-each-ref --format='%(refname:short)' refs/heads/ | sort)
+      if [[ ${#LOCAL_BRANCHES[@]} -eq 0 ]]; then echo "No local branches found"; exit 2; fi
+      for i in "${!LOCAL_BRANCHES[@]}"; do echo "  $((i+1))) ${LOCAL_BRANCHES[$i]}"; done
+      read -r -p "Enter choice [1-${#LOCAL_BRANCHES[@]}]: " lsel || true
+      if [[ "$lsel" =~ ^[0-9]+$ ]] && (( lsel >=1 && lsel <= ${#LOCAL_BRANCHES[@]} )); then
+        PUSH_BRANCH="${LOCAL_BRANCHES[$((lsel-1))]}"
+      else
+        echo "Invalid choice"; exit 2
+      fi
+    else
+      PUSH_BRANCH="$CURRENT_BRANCH"
+    fi
+
+    # Determine remote (default origin if present)
+    DEFAULT_REMOTE="origin"
+    if git remote get-url "$DEFAULT_REMOTE" >/dev/null 2>&1; then
+      PUSH_REMOTE="$DEFAULT_REMOTE"
+    else
+      REMOTES=()
+      while IFS= read -r _r; do [[ -n "$_r" ]] && REMOTES+=("$_r"); done < <(git remote)
+      if [[ ${#REMOTES[@]} -eq 0 ]]; then echo "No git remotes configured"; exit 2; fi
+      echo "Select a remote to push:" 
+      for i in "${!REMOTES[@]}"; do echo "  $((i+1))) ${REMOTES[$i]}"; done
+      read -r -p "Enter choice [1-${#REMOTES[@]}]: " rsel || true
+      if [[ "$rsel" =~ ^[0-9]+$ ]] && (( rsel >=1 && rsel <= ${#REMOTES[@]} )); then
+        PUSH_REMOTE="${REMOTES[$((rsel-1))]}"
+      else
+        echo "Invalid choice"; exit 2
+      fi
+    fi
+
+    echo "Plan to push:"
+    echo "  Remote : $PUSH_REMOTE"
+    echo "  Branch : $PUSH_BRANCH"
+    echo "  Tag    : $TAG_NAME"
+    if confirm "Confirm push to $PUSH_REMOTE/$PUSH_BRANCH and tag $TAG_NAME?"; then
+      # Push branch (create upstream if missing)
+      if git rev-parse --abbrev-ref --symbolic-full-name "@{u}" >/dev/null 2>&1; then
+        git push "$PUSH_REMOTE" "$PUSH_BRANCH"
+      else
+        git push -u "$PUSH_REMOTE" "$PUSH_BRANCH"
+      fi
+      git push "$PUSH_REMOTE" "$TAG_NAME"
+      echo "Pushed to $PUSH_REMOTE/$PUSH_BRANCH and tag $TAG_NAME."
+    else
+      echo "Skip pushing."
+    fi
   else
-    git push -u "$PUSH_REMOTE" "$PUSH_BRANCH"
+    echo "Skipping push by user choice."
   fi
-  # Push tag
-  git push "$PUSH_REMOTE" "$TAG_NAME"
-  echo "Pushed to $PUSH_REMOTE/$PUSH_BRANCH and tag $TAG_NAME."
+else
+  echo "Non-interactive shell; skipping push."
 fi

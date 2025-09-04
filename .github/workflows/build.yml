@@ -6,37 +6,46 @@ on:
     tags:
       - "v*.*.*"
 
+env:
+  PROJECT: gnb
+  BASE_URL: "https://download.mynet.club/gnb"
+
 jobs:
   build:
     runs-on: ${{ matrix.runs_on }}
     strategy:
       matrix:
         include:
-          - { os: linux, platform: linux, arch: amd64,    makefile: Makefile.linux_amd64,     runs_on: ubuntu-latest }
-          - { os: linux, platform: linux, arch: arm64,    makefile: Makefile.linux_arm64,     runs_on: ubuntu-latest }
-          - { os: linux, platform: linux, arch: armv7-softfp, makefile: Makefile.linux_armv7_soft, runs_on: ubuntu-latest }
-          - { os: linux, platform: linux, arch: armv7-hardfp, makefile: Makefile.linux_armv7, runs_on: ubuntu-latest }
-          - { os: linux, platform: linux, arch: mips,     makefile: Makefile.linux_mips,      runs_on: ubuntu-latest }
-          - { os: linux, platform: linux, arch: mipsel,   makefile: Makefile.linux_mipsel,    runs_on: ubuntu-latest }
-          - { os: linux, platform: linux, arch: mips64,   makefile: Makefile.linux_mips64,    runs_on: ubuntu-latest }
-          - { os: linux, platform: linux, arch: mips64el, makefile: Makefile.linux_mips64el,  runs_on: ubuntu-latest }
-          - { os: linux, platform: linux, arch: riscv64,  makefile: Makefile.linux_riscv64,   runs_on: ubuntu-latest }
-          - { os: openwrt, platform: openwrt, arch: amd64,    makefile: Makefile.openwrt_amd64,    runs_on: ubuntu-latest }
-          - { os: openwrt, platform: openwrt, arch: arm64,    makefile: Makefile.openwrt_arm64,    runs_on: ubuntu-latest }
-          - { os: openwrt, platform: openwrt, arch: armv7-softfp, makefile: Makefile.openwrt_armv7_soft, runs_on: ubuntu-latest }
-          - { os: openwrt, platform: openwrt, arch: armv7-hardfp, makefile: Makefile.openwrt_armv7, runs_on: ubuntu-latest }
-          - { os: openwrt, platform: openwrt, arch: mips,     makefile: Makefile.openwrt_mips,     runs_on: ubuntu-latest }
-          - { os: openwrt, platform: openwrt, arch: mipsel,   makefile: Makefile.openwrt_mipsel,   runs_on: ubuntu-latest }
-          - { os: openwrt, platform: openwrt, arch: mips64,   makefile: Makefile.openwrt_mips64,   runs_on: ubuntu-latest }
-          - { os: openwrt, platform: openwrt, arch: mips64el, makefile: Makefile.openwrt_mips64el, runs_on: ubuntu-latest }
-          - { os: openwrt, platform: openwrt, arch: riscv64,  makefile: Makefile.openwrt_riscv64,  runs_on: ubuntu-latest }
-          - { os: windows, platform: windows, arch: amd64,    makefile: Makefile.mingw_x86_64,     runs_on: ubuntu-latest }
-          - { os: windows, platform: windows, arch: 386,      makefile: Makefile.mingw_x86,        runs_on: ubuntu-latest }
-          - { os: windows, platform: windows, arch: arm64,    makefile: Makefile.mingw_arm64,      runs_on: ubuntu-latest }
-          - { os: darwin,  platform: darwin,  arch: amd64,    makefile: Makefile.Darwin,           runs_on: macos-latest }
-          - { os: darwin,  platform: darwin,  arch: arm64,    makefile: Makefile.Darwin,           runs_on: macos-latest }
-          - { os: freebsd, platform: freebsd, arch: amd64,    makefile: Makefile.freebsd_amd64,    runs_on: ubuntu-latest }
-          - { os: freebsd, platform: freebsd, arch: arm64,    makefile: Makefile.freebsd_arm64,    runs_on: ubuntu-latest }
+          # Linux
+          - os: linux; platform: linux; arch: amd64; makefile: Makefile.linux; runs_on: ubuntu-latest
+          - os: linux; platform: linux; arch: arm64; makefile: Makefile.linux; runs_on: ubuntu-latest
+          - os: linux; platform: linux; arch: armv7-softfp; makefile: Makefile.linux; runs_on: ubuntu-latest
+          - os: linux; platform: linux; arch: armv7-hardfp; makefile: Makefile.linux; runs_on: ubuntu-latest
+          - os: linux; platform: linux; arch: mips; makefile: Makefile.linux; runs_on: ubuntu-latest
+          - os: linux; platform: linux; arch: mipsel; makefile: Makefile.linux; runs_on: ubuntu-latest
+          - os: linux; platform: linux; arch: mips64; makefile: Makefile.linux; runs_on: ubuntu-latest
+          - os: linux; platform: linux; arch: mips64el; makefile: Makefile.linux; runs_on: ubuntu-latest
+          - os: linux; platform: linux; arch: riscv64; makefile: Makefile.linux; runs_on: ubuntu-latest
+          # OpenWrt
+          - os: openwrt; platform: linux; arch: amd64; makefile: Makefile.openwrt; runs_on: ubuntu-latest
+          - os: openwrt; platform: linux; arch: arm64; makefile: Makefile.openwrt; runs_on: ubuntu-latest
+          - os: openwrt; platform: linux; arch: armv7-softfp; makefile: Makefile.openwrt; runs_on: ubuntu-latest
+          - os: openwrt; platform: linux; arch: armv7-hardfp; makefile: Makefile.openwrt; runs_on: ubuntu-latest
+          - os: openwrt; platform: linux; arch: mips; makefile: Makefile.openwrt; runs_on: ubuntu-latest
+          - os: openwrt; platform: linux; arch: mipsel; makefile: Makefile.openwrt; runs_on: ubuntu-latest
+          - os: openwrt; platform: linux; arch: mips64; makefile: Makefile.openwrt; runs_on: ubuntu-latest
+          - os: openwrt; platform: linux; arch: mips64el; makefile: Makefile.openwrt; runs_on: ubuntu-latest
+          - os: openwrt; platform: linux; arch: riscv64; makefile: Makefile.openwrt; runs_on: ubuntu-latest
+          # Windows
+          - os: windows; platform: windows; arch: amd64; makefile: Makefile.mingw_x86_64; runs_on: ubuntu-latest
+          - os: windows; platform: windows; arch: 386; makefile: Makefile.mingw_x86_64; runs_on: ubuntu-latest
+          - os: windows; platform: windows; arch: arm64; makefile: Makefile.mingw_x86_64; runs_on: ubuntu-latest
+          # Darwin
+          - os: darwin; platform: darwin; arch: amd64; makefile: Makefile.Darwin; runs_on: macos-latest
+          - os: darwin; platform: darwin; arch: arm64; makefile: Makefile.Darwin; runs_on: macos-latest
+          # FreeBSD
+          - os: freebsd; platform: freebsd; arch: amd64; makefile: Makefile.freebsd; runs_on: ubuntu-latest
+          - os: freebsd; platform: freebsd; arch: arm64; makefile: Makefile.freebsd; runs_on: ubuntu-latest
 
     steps:
       - name: Checkout source
@@ -45,148 +54,109 @@ jobs:
           repository: luoyueliang/gnb
           token: ${{ secrets.PRIVATE_REPO_PAT }}
 
-      - name: Extract tag name
+      - name: Extract tag
         id: tag
         run: echo "tag=${GITHUB_REF##*/}" >> "$GITHUB_OUTPUT"
 
-      - name: Install build dependencies (Ubuntu)
+      - name: Install build dependencies
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          # Base tools
           sudo apt-get install -y build-essential pkg-config wget curl git ca-certificates xz-utils tar
-          # Cross toolchains (install when available; ignore failures to keep matrix broad)
           sudo apt-get install -y gcc-aarch64-linux-gnu gcc-arm-linux-gnueabihf || true
           sudo apt-get install -y gcc-mips-linux-gnu gcc-mipsel-linux-gnu gcc-mips64-linux-gnuabi64 gcc-mips64el-linux-gnuabi64 || true
           sudo apt-get install -y gcc-riscv64-linux-gnu || true
-          # Windows cross
           if [[ "${{ matrix.platform }}" == "windows" ]]; then
             sudo apt-get install -y mingw-w64
           fi
 
-      - name: Install build dependencies (macOS)
+      - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
         run: |
           brew update
           brew install cmake ninja || true
 
-      - name: Select Makefile and build dirs
-        id: paths
-        run: |
-          MAKEFILE="${{ matrix.makefile }}"
-          OUT_DIR="$GITHUB_WORKSPACE/.out/${{ steps.tag.outputs.tag }}/${{ matrix.os }}/${{ matrix.arch }}"
-          PKG_DIR="$GITHUB_WORKSPACE/.pkg/${{ steps.tag.outputs.tag }}"
-          mkdir -p "$OUT_DIR" "$PKG_DIR"
-          echo "makefile=$MAKEFILE" >> "$GITHUB_OUTPUT"
-          echo "OUT_DIR=$OUT_DIR" >> "$GITHUB_ENV"
-          echo "PKG_DIR=$PKG_DIR" >> "$GITHUB_ENV"
+      - name: Cache OpenWrt musl toolchains
+        if: matrix.platform == 'openwrt'
+        uses: actions/cache@v3
+        with:
+          path: /tmp/musl-cross-${{ matrix.arch }}
+          key: openwrt-musl-${{ matrix.arch }}-${{ runner.os }}-v1
 
-      - name: Setup OpenWrt cross toolchain and static flags
-        if: runner.os == 'Linux' && matrix.platform == 'openwrt'
+      - name: Setup cross compiler and static flags
         run: |
-          set -euo pipefail
-          echo "Configuring OpenWrt toolchain for ${{ matrix.arch }}"
-          case "${{ matrix.arch }}" in
-            amd64|x86_64)
-              export CC=gcc
+          case "${{ matrix.platform }}-${{ matrix.arch }}" in
+            linux-amd64) export CC=gcc ;;
+            linux-arm64) export CC=aarch64-linux-gnu-gcc ;;
+            linux-armv7-softfp|linux-armv7-hardfp) export CC=arm-linux-gnueabihf-gcc ;;
+            linux-mips) export CC=mips-linux-gnu-gcc ;;
+            linux-mipsel) export CC=mipsel-linux-gnu-gcc ;;
+            linux-mips64) export CC=mips64-linux-gnuabi64-gcc ;;
+            linux-mips64el) export CC=mips64el-linux-gnuabi64-gcc ;;
+            linux-riscv64) export CC=riscv64-linux-gnu-gcc ;;
+            openwrt-*) 
+              TOOL=/tmp/musl-cross-${{ matrix.arch }}
+              mkdir -p $TOOL
+              export PATH=$TOOL/bin:$PATH
+              case "${{ matrix.arch }}" in
+                amd64) export CC=gcc ;;
+                arm64) export CC=aarch64-linux-gnu-gcc ;;
+                armv7-softfp|armv7-hardfp) export CC=arm-linux-gnueabihf-gcc ;;
+                mips) export CC=mips-linux-gnu-gcc ;;
+                mipsel) export CC=mipsel-linux-gnu-gcc ;;
+                mips64) export CC=mips64-linux-gnuabi64-gcc ;;
+                mips64el) export CC=mips64el-linux-gnuabi64-gcc ;;
+                riscv64) export CC=riscv64-linux-gnu-gcc ;;
+              esac
               ;;
-            arm64)
-              export CC=aarch64-linux-gnu-gcc
+            windows-amd64) export CC=x86_64-w64-mingw32-gcc ;;
+            windows-386) export CC=i686-w64-mingw32-gcc ;;
+            windows-arm64) export CC=aarch64-w64-mingw32-gcc ;;
+            darwin-*) export CC=clang ;;
+            freebsd-amd64) export CC=gcc ;;
+            freebsd-arm64) export CC=aarch64-linux-gnu-gcc ;;
+          esac
+
+          export CXX=${CC/gcc/g++}
+          export AR=${CC/gcc/ar}
+          export RANLIB=${CC/gcc/ranlib}
+
+          # Linux/FreeBSD/OpenWrt/Windows static
+          case "${{ matrix.os }}" in
+            linux|freebsd|openwrt|windows)
+              sed -i "s|CC} -o ${GNB_CTL}|CC} -o ${GNB_CTL} -static|g" ${{ matrix.makefile }} || true
+              sed -i "s|CC} -o ${GNB_ES}|CC} -o ${GNB_ES} -static|g" ${{ matrix.makefile }} || true
+              sed -i "s|CC} -o ${GNB_CRYPTO}|CC} -o ${GNB_CRYPTO} -static|g" ${{ matrix.makefile }} || true
+              sed -i "s|CC} -o ${GNB_CLI}|CC} -o ${GNB_CLI} -static|g" ${{ matrix.makefile }} || true
               ;;
-            armv7-*|armv7)
-              export CC=arm-linux-gnueabihf-gcc
-              ;;
-            mipsel)
-              # Use musl.cc prebuilt toolchain for mipsel (proven in prior workflows)
-              TOOL=/tmp/mipsel-linux-musl-cross
-              if [ ! -d "$TOOL" ]; then
-                wget -q https://musl.cc/mipsel-linux-musl-cross.tgz -O /tmp/mipsel-linux-musl-cross.tgz
-                tar -xzf /tmp/mipsel-linux-musl-cross.tgz -C /tmp/
-              fi
-              echo "$TOOL/bin" >> $GITHUB_PATH
-              export CROSS_COMPILE=mipsel-linux-musl-
-              export CC=${CROSS_COMPILE}gcc
-              export CXX=${CROSS_COMPILE}g++
-              export AR=${CROSS_COMPILE}ar
-              export AS=${CROSS_COMPILE}as
-              export LD=${CROSS_COMPILE}ld
-              export RANLIB=${CROSS_COMPILE}ranlib
-              ;;
-            mips)
-              export CC=mips-linux-gnu-gcc || true
-              ;;
-            mips64)
-              export CC=mips64-linux-gnuabi64-gcc || true
-              ;;
-            mips64el)
-              export CC=mips64el-linux-gnuabi64-gcc || true
-              ;;
-            riscv64)
-              export CC=riscv64-linux-gnu-gcc || true
+            darwin)
+              sed -i '' 's|-static||g' ${{ matrix.makefile }} || true
+              sed -i '' 's|-lssl|-l:libssl.a|g' ${{ matrix.makefile }} || true
+              sed -i '' 's|-lcrypto|-l:libcrypto.a|g' ${{ matrix.makefile }} || true
+              sed -i '' 's|-lz|-l:libz.a|g' ${{ matrix.makefile }} || true
               ;;
           esac
-          # Add -static on OpenWrt link rules if not present
-          if [ -f Makefile.openwrt ]; then
-            sed -i 's|CC} -o ${GNB_CTL}|CC} -o ${GNB_CTL} -static|g' Makefile.openwrt || true
-            sed -i 's|CC} -o ${GNB_ES}|CC} -o ${GNB_ES} -static|g' Makefile.openwrt || true
-            sed -i 's|CC} -o ${GNB_CRYPTO}|CC} -o ${GNB_CRYPTO} -static|g' Makefile.openwrt || true
-            sed -i 's|CC} -o ${GNB_CLI}|CC} -o ${GNB_CLI} -static|g' Makefile.openwrt || true
-          fi
-          echo "CC=${CC:-}" >> $GITHUB_ENV
 
-      - name: Setup Windows cross toolchain and static flags
-        if: runner.os == 'Linux' && matrix.platform == 'windows'
-        run: |
-          set -euo pipefail
-          case "${{ matrix.arch }}" in
-            amd64)
-              PREFIX=x86_64-w64-mingw32
-              ;;
-            386)
-              PREFIX=i686-w64-mingw32
-              ;;
-            arm64)
-              PREFIX=aarch64-w64-mingw32
-              ;;
-          esac
-          echo "/usr/${PREFIX}/bin" >> $GITHUB_PATH
-          echo "CC=${PREFIX}-gcc" >> $GITHUB_ENV
-          echo "CXX=${PREFIX}-g++" >> $GITHUB_ENV
-          echo "AR=${PREFIX}-ar" >> $GITHUB_ENV
-          echo "RANLIB=${PREFIX}-ranlib" >> $GITHUB_ENV
-          # Ensure static link on Windows makefile
-          if [ -f Makefile.mingw_x86_64 ]; then
-            sed -i 's|CC} -o ${GNB_CTL}|CC} -o ${GNB_CTL} -static|g' Makefile.mingw_x86_64 || true
-            sed -i 's|CC} -o ${GNB_ES}|CC} -o ${GNB_ES} -static|g' Makefile.mingw_x86_64 || true
-            sed -i 's|CC} -o ${GNB_CRYPTO}|CC} -o ${GNB_CRYPTO} -static|g' Makefile.mingw_x86_64 || true
-            sed -i 's|CC} -o ${GNB_CLI}|CC} -o ${GNB_CLI} -static|g' Makefile.mingw_x86_64 || true
-          fi
-
-      - name: Setup Darwin static link tweaks
-        if: runner.os == 'macOS' && matrix.platform == 'darwin'
-        run: |
-          set -euo pipefail
-          if [ -f Makefile.Darwin ]; then
-            # macOS BSD sed requires backup suffix arg; using '' for in-place
-            sed -i '' 's|-static||g' Makefile.Darwin || true
-            sed -i '' 's|-lssl|-l:libssl.a|g' Makefile.Darwin || true
-            sed -i '' 's|-lcrypto|-l:libcrypto.a|g' Makefile.Darwin || true
-            sed -i '' 's|-lz|-l:libz.a|g' Makefile.Darwin || true
-          fi
+          echo "CC=$CC" >> $GITHUB_ENV
+          echo "CXX=$CXX" >> $GITHUB_ENV
+          echo "AR=$AR" >> $GITHUB_ENV
+          echo "RANLIB=$RANLIB" >> $GITHUB_ENV
 
       - name: Build
         run: |
-          # Export CC if set by toolchain steps
-          : "${CC:=}"
-          if [ -n "$CC" ]; then export CC; fi
-          make -f "${{ steps.paths.outputs.makefile }}" clean
-          make -f "${{ steps.paths.outputs.makefile }}" install
-          mkdir -p "$OUT_DIR"
+          OUT_DIR="$GITHUB_WORKSPACE/.out/${{ steps.tag.outputs.tag }}/${{ matrix.os }}/${{ matrix.arch }}"
+          PKG_DIR="$GITHUB_WORKSPACE/.pkg/${{ steps.tag.outputs.tag }}"
+          mkdir -p "$OUT_DIR" "$PKG_DIR"
+
+          make -f "${{ matrix.makefile }}" clean
+          make -f "${{ matrix.makefile }}" install
           if [ -d bin ]; then mv bin/* "$OUT_DIR/"; fi
 
       - name: Package
         run: |
-          ARCHIVE="gnb_${{ matrix.os }}_${{ matrix.arch }}_${{ steps.tag.outputs.tag }}.tar.gz"
+          OUT_DIR="$GITHUB_WORKSPACE/.out/${{ steps.tag.outputs.tag }}/${{ matrix.os }}/${{ matrix.arch }}"
+          PKG_DIR="$GITHUB_WORKSPACE/.pkg/${{ steps.tag.outputs.tag }}"
+          ARCHIVE="${PROJECT}_${{ matrix.os }}_${{ matrix.arch }}_${{ steps.tag.outputs.tag }}.tar.gz"
           tar -czvf "$ARCHIVE" -C "$OUT_DIR" .
           mv "$ARCHIVE" "$PKG_DIR/"
 
@@ -222,7 +192,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Publish via rsync (optional)
+      - name: Publish to download.mynet.club
         run: |
           if [ -z "${DOWNLOAD_SSH_HOST:-}" ] || [ -z "${DOWNLOAD_SSH_USER:-}" ] || [ -z "${DOWNLOAD_SSH_KEY:-}" ] || [ -z "${DOWNLOAD_SSH_REMOTE_DIR:-}" ]; then
             echo "SSH upload skipped (secrets not configured)."

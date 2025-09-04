@@ -8,39 +8,39 @@
           "os": "linux",
           "platform": "linux",
           "arch": ["amd64", "arm64", "armv7-softfp", "armv7-hardfp", "mips", "mipsel", "mips64", "mips64el", "riscv64"],
-          "base_url": "https://download.mynet.club/gnb/v1.6.0.a/",
+          "base_url": "https://{{DOWNLOAD_SSH_HOST}}/gnb/v1.6.0.a/",
           "ext": "tgz"
         },
         {
           "os": "openwrt",
           "platform": "linux",
           "arch": ["amd64", "arm64", "armv7-softfp", "armv7-hardfp", "mips", "mipsel", "mips64", "mips64el", "riscv64"],
-          "base_url": "https://download.mynet.club/gnb/v1.6.0.a/",
+          "base_url": "https://{{DOWNLOAD_SSH_HOST}}/gnb/v1.6.0.a/",
           "ext": "tgz"
         },
         {
           "os": "windows",
           "platform": "windows",
           "arch": ["amd64", "arm64", "386"],
-          "base_url": "https://download.mynet.club/gnb/v1.6.0.a/",
+          "base_url": "https://{{DOWNLOAD_SSH_HOST}}/gnb/v1.6.0.a/",
           "ext": "zip"
         },
         {
           "os": "darwin",
           "platform": "darwin",
           "arch": ["amd64", "arm64"],
-          "base_url": "https://download.mynet.club/gnb/v1.6.0.a/",
+          "base_url": "https://{{DOWNLOAD_SSH_HOST}}/gnb/v1.6.0.a/",
           "ext": "tgz"
         },
         {
           "os": "freebsd",
           "platform": "freebsd",
           "arch": ["amd64", "arm64"],
-          "base_url": "https://download.mynet.club/gnb/v1.6.0.a/",
+          "base_url": "https://{{DOWNLOAD_SSH_HOST}}/gnb/v1.6.0.a/",
           "ext": "tgz"
         }
       ],
-      "checksums": "https://download.mynet.club/gnb/v1.6.0.a/checksums.txt"
+      "checksums": "https://{{DOWNLOAD_SSH_HOST}}/gnb/v1.6.0.a/checksums.txt"
     }
   }
 }
