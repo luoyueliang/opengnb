@@ -73,8 +73,14 @@ jobs:
           sudo apt-get install -y gcc-riscv64-linux-gnu || true
 
       - name: Install dependencies (macOS)
-        if: matrix.os == 'darwin'
         run: |
+          # 确保 brew 可用
+          if ! command -v brew >/dev/null 2>&1; then
+            echo "Homebrew not found, installing..."
+            /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+            echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> $GITHUB_ENV
+            eval "$(/opt/homebrew/bin/brew shellenv)"
+          fi
           brew update
           brew install cmake ninja || true
 
@@ -84,7 +90,15 @@ jobs:
         with:
           path: /tmp/musl-cross-${{ matrix.arch }}
           key: openwrt-musl-${{ matrix.arch }}-${{ runner.os }}-v1
-
+      
+      - name: Setup Windows toolchain
+        if: matrix.os == 'windows'
+        run: |
+          # 设置 windres（Windows 资源编译器）
+          export WINDRES=${CC/gcc/windres}
+          # 确保 .rc 文件可读
+          chmod +r ./src/mingw/gnb_res.rc
+          
       - name: Setup cross compiler and static flags
         run: |
           # Cross compiler
