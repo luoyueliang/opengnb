@@ -17,35 +17,35 @@ jobs:
       matrix:
         include:
           # Linux
-          - os: linux; platform: linux; arch: amd64; makefile: Makefile.linux; runs_on: ubuntu-latest
-          - os: linux; platform: linux; arch: arm64; makefile: Makefile.linux; runs_on: ubuntu-latest
-          - os: linux; platform: linux; arch: armv7-softfp; makefile: Makefile.linux; runs_on: ubuntu-latest
-          - os: linux; platform: linux; arch: armv7-hardfp; makefile: Makefile.linux; runs_on: ubuntu-latest
-          - os: linux; platform: linux; arch: mips; makefile: Makefile.linux; runs_on: ubuntu-latest
-          - os: linux; platform: linux; arch: mipsel; makefile: Makefile.linux; runs_on: ubuntu-latest
-          - os: linux; platform: linux; arch: mips64; makefile: Makefile.linux; runs_on: ubuntu-latest
-          - os: linux; platform: linux; arch: mips64el; makefile: Makefile.linux; runs_on: ubuntu-latest
-          - os: linux; platform: linux; arch: riscv64; makefile: Makefile.linux; runs_on: ubuntu-latest
+          - { os: linux, platform: linux, arch: amd64,        makefile: Makefile.linux,   runs_on: ubuntu-latest }
+          - { os: linux, platform: linux, arch: arm64,        makefile: Makefile.linux,   runs_on: ubuntu-latest }
+          - { os: linux, platform: linux, arch: armv7-softfp, makefile: Makefile.linux,   runs_on: ubuntu-latest }
+          - { os: linux, platform: linux, arch: armv7-hardfp, makefile: Makefile.linux,   runs_on: ubuntu-latest }
+          - { os: linux, platform: linux, arch: mips,         makefile: Makefile.linux,   runs_on: ubuntu-latest }
+          - { os: linux, platform: linux, arch: mipsel,       makefile: Makefile.linux,   runs_on: ubuntu-latest }
+          - { os: linux, platform: linux, arch: mips64,       makefile: Makefile.linux,   runs_on: ubuntu-latest }
+          - { os: linux, platform: linux, arch: mips64el,     makefile: Makefile.linux,   runs_on: ubuntu-latest }
+          - { os: linux, platform: linux, arch: riscv64,      makefile: Makefile.linux,   runs_on: ubuntu-latest }
           # OpenWrt
-          - os: openwrt; platform: linux; arch: amd64; makefile: Makefile.openwrt; runs_on: ubuntu-latest
-          - os: openwrt; platform: linux; arch: arm64; makefile: Makefile.openwrt; runs_on: ubuntu-latest
-          - os: openwrt; platform: linux; arch: armv7-softfp; makefile: Makefile.openwrt; runs_on: ubuntu-latest
-          - os: openwrt; platform: linux; arch: armv7-hardfp; makefile: Makefile.openwrt; runs_on: ubuntu-latest
-          - os: openwrt; platform: linux; arch: mips; makefile: Makefile.openwrt; runs_on: ubuntu-latest
-          - os: openwrt; platform: linux; arch: mipsel; makefile: Makefile.openwrt; runs_on: ubuntu-latest
-          - os: openwrt; platform: linux; arch: mips64; makefile: Makefile.openwrt; runs_on: ubuntu-latest
-          - os: openwrt; platform: linux; arch: mips64el; makefile: Makefile.openwrt; runs_on: ubuntu-latest
-          - os: openwrt; platform: linux; arch: riscv64; makefile: Makefile.openwrt; runs_on: ubuntu-latest
+          - { os: openwrt, platform: linux, arch: amd64,        makefile: Makefile.openwrt, runs_on: ubuntu-latest }
+          - { os: openwrt, platform: linux, arch: arm64,        makefile: Makefile.openwrt, runs_on: ubuntu-latest }
+          - { os: openwrt, platform: linux, arch: armv7-softfp, makefile: Makefile.openwrt, runs_on: ubuntu-latest }
+          - { os: openwrt, platform: linux, arch: armv7-hardfp, makefile: Makefile.openwrt, runs_on: ubuntu-latest }
+          - { os: openwrt, platform: linux, arch: mips,         makefile: Makefile.openwrt, runs_on: ubuntu-latest }
+          - { os: openwrt, platform: linux, arch: mipsel,       makefile: Makefile.openwrt, runs_on: ubuntu-latest }
+          - { os: openwrt, platform: linux, arch: mips64,       makefile: Makefile.openwrt, runs_on: ubuntu-latest }
+          - { os: openwrt, platform: linux, arch: mips64el,     makefile: Makefile.openwrt, runs_on: ubuntu-latest }
+          - { os: openwrt, platform: linux, arch: riscv64,      makefile: Makefile.openwrt, runs_on: ubuntu-latest }
           # Windows
-          - os: windows; platform: windows; arch: amd64; makefile: Makefile.mingw_x86_64; runs_on: ubuntu-latest
-          - os: windows; platform: windows; arch: 386; makefile: Makefile.mingw_x86_64; runs_on: ubuntu-latest
-          - os: windows; platform: windows; arch: arm64; makefile: Makefile.mingw_x86_64; runs_on: ubuntu-latest
+          - { os: windows, platform: windows, arch: amd64, makefile: Makefile.mingw_x86_64, runs_on: ubuntu-latest }
+          - { os: windows, platform: windows, arch: 386,   makefile: Makefile.mingw_x86_64, runs_on: ubuntu-latest }
+          - { os: windows, platform: windows, arch: arm64, makefile: Makefile.mingw_x86_64, runs_on: ubuntu-latest }
           # Darwin
-          - os: darwin; platform: darwin; arch: amd64; makefile: Makefile.Darwin; runs_on: macos-latest
-          - os: darwin; platform: darwin; arch: arm64; makefile: Makefile.Darwin; runs_on: macos-latest
+          - { os: darwin, platform: darwin, arch: amd64, makefile: Makefile.Darwin, runs_on: macos-latest }
+          - { os: darwin, platform: darwin, arch: arm64, makefile: Makefile.Darwin, runs_on: macos-latest }
           # FreeBSD
-          - os: freebsd; platform: freebsd; arch: amd64; makefile: Makefile.freebsd; runs_on: ubuntu-latest
-          - os: freebsd; platform: freebsd; arch: arm64; makefile: Makefile.freebsd; runs_on: ubuntu-latest
+          - { os: freebsd, platform: freebsd, arch: amd64, makefile: Makefile.freebsd, runs_on: ubuntu-latest }
+          - { os: freebsd, platform: freebsd, arch: arm64, makefile: Makefile.freebsd, runs_on: ubuntu-latest }
 
     steps:
       - name: Checkout source
@@ -164,7 +164,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: gnb-${{ matrix.os }}-${{ matrix.arch }}
-          path: ${{ env.PKG_DIR }}/*
+          path: .pkg/${{ steps.tag.outputs.tag }}/*
 
   publish:
     needs: build
