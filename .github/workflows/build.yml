@@ -107,10 +107,10 @@ jobs:
           # Static linking tweaks
           case "${{ matrix.os }}" in
             linux|freebsd|openwrt|windows)
-              sed -i "s|CC} -o ${GNB_CTL}|CC} -o ${GNB_CTL} -static|g" ${{ matrix.makefile }} || true
-              sed -i "s|CC} -o ${GNB_ES}|CC} -o ${GNB_ES} -static|g" ${{ matrix.makefile }} || true
-              sed -i "s|CC} -o ${GNB_CRYPTO}|CC} -o ${GNB_CRYPTO} -static|g" ${{ matrix.makefile }} || true
-              sed -i "s|CC} -o ${GNB_CLI}|CC} -o ${GNB_CLI} -static|g" ${{ matrix.makefile }} || true
+              sed -i "s|\(CC} -o ${GNB_CTL}\)|\1 -static|g" ${{ matrix.makefile }} || true
+              sed -i "s|\(CC} -o ${GNB_ES}\)|\1 -static|g" ${{ matrix.makefile }} || true
+              sed -i "s|\(CC} -o ${GNB_CRYPTO}\)|\1 -static|g" ${{ matrix.makefile }} || true
+              sed -i "s|\(CC} -o ${GNB_CLI}\)|\1 -static|g" ${{ matrix.makefile }} || true
               ;;
             darwin)
               sed -i '' 's|-static||g' ${{ matrix.makefile }} || true
