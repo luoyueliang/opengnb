@@ -73,27 +73,16 @@ jobs:
           sudo apt-get install -y gcc-mips-linux-gnu gcc-mipsel-linux-gnu gcc-mips64-linux-gnuabi64 gcc-mips64el-linux-gnuabi64 || true
           sudo apt-get install -y gcc-riscv64-linux-gnu || true
 
-      - name: Install dependencies (macOS / Linux)
+      - name: Install dependencies (macOS)
+        if: matrix.os == 'darwin'
         run: |
-          if [[ "$(uname)" == "Darwin" ]]; then
-            # macOS
-            if ! command -v brew >/dev/null 2>&1; then
-              /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-              echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> $GITHUB_ENV
-              eval "$(/opt/homebrew/bin/brew shellenv)"
-            fi
-            brew update
-            brew install cmake ninja || true
-          elif [[ "$(uname)" == "Linux" ]]; then
-            # Linux
-            if ! command -v brew >/dev/null 2>&1; then
-              /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-              echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> $GITHUB_ENV
-              eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-            fi
-            brew update
-            brew install cmake ninja || true
+          if ! command -v brew >/dev/null 2>&1; then
+            /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+            echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> $GITHUB_ENV
+            eval "$(/opt/homebrew/bin/brew shellenv)"
           fi
+          brew update
+          brew install cmake ninja || true
 
       - name: Cache OpenWrt musl toolchains
         if: matrix.os == 'openwrt'
