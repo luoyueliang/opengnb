@@ -1,0 +1,87 @@
+name: Test Rsync Upload
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Remote tag/dir name under REMOTE_DIR (optional)"
+        required: false
+        default: ""
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare dummy artifacts
+        run: |
+          set -euo pipefail
+          mkdir -p .release/flat
+          date -u +%Y-%m-%dT%H:%M:%SZ > .release/flat/timestamp.txt
+          echo "hello rsync" > .release/flat/hello.txt
+          dd if=/dev/urandom of=.release/flat/random.bin bs=1024 count=32 status=none
+          sha256sum .release/flat/* > .release/flat/checksums.txt
+          echo "Prepared files:"; ls -la .release/flat
+
+      - name: Upload to remote via rsync (debug)
+        env:
+          SSH_HOST: ${{ secrets.DOWNLOAD_SSH_HOST }}
+          SSH_USER: ${{ secrets.DOWNLOAD_SSH_USER }}
+          SSH_KEY: ${{ secrets.DOWNLOAD_SSH_KEY }}
+          SSH_PORT: ${{ secrets.DOWNLOAD_SSH_PORT }}
+          REMOTE_DIR: ${{ secrets.DOWNLOAD_SSH_REMOTE_DIR }}
+          INPUT_TAG: ${{ inputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          SRC_DIR=".release/flat"
+          if [[ ! -d "$SRC_DIR" ]]; then
+            echo "$SRC_DIR not found; nothing to upload"; exit 1; fi
+
+          TAG="${INPUT_TAG:-}"
+          if [[ -z "$TAG" ]]; then TAG="rsync-test-${GITHUB_RUN_ID}"; fi
+          echo "TAG=$TAG"
+
+          # Validate secrets
+          if [[ -z "${SSH_HOST:-}" || -z "${SSH_USER:-}" || -z "${SSH_KEY:-}" || -z "${REMOTE_DIR:-}" ]]; then
+            echo "Missing SSH secrets (DOWNLOAD_SSH_HOST/USER/KEY/REMOTE_DIR)"; exit 1
+          fi
+
+          PORT="${SSH_PORT:-22}"
+          DEST_DIR="${REMOTE_DIR%/}/${TAG}/"
+          echo "SSH_HOST=$SSH_HOST PORT=$PORT"
+          echo "DEST_DIR=$DEST_DIR"
+          echo "Listing $SRC_DIR:"; ls -la "$SRC_DIR"; du -sh "$SRC_DIR"/* 2>/dev/null || true
+
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          echo "$SSH_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+
+          # Populate known_hosts for host:port with common key types
+          if [[ "$PORT" != "22" ]]; then
+            ssh-keyscan -p "$PORT" -t rsa,ecdsa,ed25519 "$SSH_HOST" \
+              | awk -v h="$SSH_HOST" -v p="$PORT" '{ $1 = "["h"]:"p; print }' \
+              >> ~/.ssh/known_hosts 2>/dev/null || true
+          else
+            ssh-keyscan -p "$PORT" -t rsa,ecdsa,ed25519 "$SSH_HOST" \
+              >> ~/.ssh/known_hosts 2>/dev/null || true
+          fi
+          chmod 644 ~/.ssh/known_hosts || true
+
+          echo "::group::known_hosts preview"; wc -l ~/.ssh/known_hosts || true; head -n 5 ~/.ssh/known_hosts || true; echo "::endgroup::"
+
+          SSH_OPTS="-i ~/.ssh/id_rsa -p $PORT -o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/known_hosts -o BatchMode=yes -o ConnectTimeout=15"
+          echo "::group::SSH -vvv connectivity test"; ssh -vvv $SSH_OPTS "$SSH_USER@$SSH_HOST" "echo 'SSH OK'; uname -a" || { echo "SSH connectivity failed"; exit 1; }; echo "::endgroup::"
+
+          echo "::group::Prepare remote dir"; ssh $SSH_OPTS "$SSH_USER@$SSH_HOST" "mkdir -p '$DEST_DIR' && echo 'Remote dir prepared: $DEST_DIR'"; echo "::endgroup::"
+
+          echo "::group::Rsync dry-run"; rsync -avzn --delete -e "ssh $SSH_OPTS" "$SRC_DIR/" "$SSH_USER@$SSH_HOST:$DEST_DIR"; echo "::endgroup::"
+
+          echo "::group::Rsync real run"; rsync -avz --delete -e "ssh $SSH_OPTS" "$SRC_DIR/" "$SSH_USER@$SSH_HOST:$DEST_DIR"; echo "::endgroup::"
+
+      - name: Summary
+        run: |
+          echo "Test rsync completed. Check remote directory under REMOTE_DIR/$TAG"
