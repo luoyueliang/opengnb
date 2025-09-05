@@ -41,17 +41,6 @@ jobs:
           - { os: openwrt, platform: linux, arch: mips64,       makefile: Makefile.openwrt }
           - { os: openwrt, platform: linux, arch: mips64el,     makefile: Makefile.openwrt }
           - { os: openwrt, platform: linux, arch: riscv64,      makefile: Makefile.openwrt }
-          # Darwin
-          - { os: darwin, platform: darwin, arch: amd64, makefile: Makefile.Darwin, runner: macos-latest }
-          - { os: darwin, platform: darwin, arch: arm64, makefile: Makefile.Darwin, runner: macos-latest }
-          # Windows
-          - { os: windows, platform: windows, arch: amd64, makefile: Makefile.mingw_x86_64, runner: windows-latest }
-          - { os: windows, platform: windows, arch: 386,   makefile: Makefile.mingw_x86_64, runner: windows-latest }
-          - { os: windows, platform: windows, arch: arm64, makefile: Makefile.mingw_x86_64, runner: windows-latest }
-          # FreeBSD
-          - { os: freebsd, platform: freebsd, arch: amd64, makefile: Makefile.freebsd, runner: freebsd-13 }
-          - { os: freebsd, platform: freebsd, arch: arm64, makefile: Makefile.freebsd, runner: freebsd-13 }
-          - { os: openbsd, platform: openbsd, arch: amd64, makefile: Makefile.openbsd, runner: openbsd-7 }
 
     steps:
       - name: Checkout source
@@ -73,20 +62,7 @@ jobs:
           sudo apt-get install -y gcc-mips-linux-gnu gcc-mipsel-linux-gnu gcc-mips64-linux-gnuabi64 gcc-mips64el-linux-gnuabi64 || true
           sudo apt-get install -y gcc-riscv64-linux-gnu || true
 
-      - name: Ensure Homebrew in PATH
-        if: matrix.os == 'darwin'
-        run: |
-          if [ -d /opt/homebrew/bin ]; then
-            echo "/opt/homebrew/bin" >> $GITHUB_PATH
-          elif [ -d /usr/local/bin ]; then
-            echo "/usr/local/bin" >> $GITHUB_PATH
-          fi
-          
-      - name: Install dependencies (macOS)
-        if: matrix.os == 'darwin'
-        run: |
-          brew update
-          brew install cmake ninja || true
+      
 
       - name: Cache OpenWrt musl toolchains
         if: matrix.os == 'openwrt'
@@ -95,13 +71,7 @@ jobs:
           path: /tmp/musl-cross-${{ matrix.arch }}
           key: openwrt-musl-${{ matrix.arch }}-${{ runner.os }}-v1
       
-      - name: Setup Windows toolchain
-        if: matrix.os == 'windows'
-        run: |
-          # 设置 windres（Windows 资源编译器）
-          export WINDRES=${CC/gcc/windres}
-          # 确保 .rc 文件可读
-          chmod +r ./src/mingw/gnb_res.rc
+      
           
       - name: Setup cross compiler and static flags
         run: |
@@ -122,19 +92,13 @@ jobs:
           export AR=${CC/gcc/ar}
           export RANLIB=${CC/gcc/ranlib}
 
-          # Static linking tweaks
+          # Static linking tweaks (only linux/openwrt)
           case "${{ matrix.os }}" in
-            linux|freebsd|openwrt|windows)
+            linux|openwrt)
               sed -i "s|\(${CC} -o ${GNB_CTL}\)|\1 -static|g" ${{ matrix.makefile }} || true
               sed -i "s|\(${CC} -o ${GNB_ES}\)|\1 -static|g" ${{ matrix.makefile }} || true
               sed -i "s|\(${CC} -o ${GNB_CRYPTO}\)|\1 -static|g" ${{ matrix.makefile }} || true
               sed -i "s|\(${CC} -o ${GNB_CLI}\)|\1 -static|g" ${{ matrix.makefile }} || true
-              ;;
-            darwin)
-              sed -i '' 's|-static||g' ${{ matrix.makefile }} || true
-              sed -i '' 's|-lssl|-l:libssl.a|g' ${{ matrix.makefile }} || true
-              sed -i '' 's|-lcrypto|-l:libcrypto.a|g' ${{ matrix.makefile }} || true
-              sed -i '' 's|-lz|-l:libz.a|g' ${{ matrix.makefile }} || true
               ;;
           esac
 
