@@ -8,7 +8,7 @@ on:
 
 env:
   PROJECT: gnb
-  BASE_URL: "https://download.mynet.club/gnb"
+  BASE_URL: "https://download.mynet.club/gnb"  
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -161,6 +161,11 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish to download.mynet.club
+        env:
+          DOWNLOAD_SSH_HOST: ${{ secrets.DOWNLOAD_SSH_HOST }}
+          DOWNLOAD_SSH_USER: ${{ secrets.DOWNLOAD_SSH_USER }}
+          DOWNLOAD_SSH_KEY: ${{ secrets.DOWNLOAD_SSH_KEY }}
+          DOWNLOAD_SSH_REMOTE_DIR: ${{ secrets.DOWNLOAD_SSH_REMOTE_DIR }}
         run: |
           if [ -z "${DOWNLOAD_SSH_HOST:-}" ] || [ -z "${DOWNLOAD_SSH_USER:-}" ] || [ -z "${DOWNLOAD_SSH_KEY:-}" ] || [ -z "${DOWNLOAD_SSH_REMOTE_DIR:-}" ]; then
             echo "SSH upload skipped (secrets not configured)."
