@@ -171,12 +171,12 @@ jobs:
           FILES=(.release/flat/* .release/flat/checksums.txt)
           echo "Publishing release assets for $TAG: ${FILES[*]}"
           # Check if release exists
-          if gh api repos/${GITHUB_REPOSITORY}/releases/tags/${TAG} >/dev/null 2>&1; then
+          if gh api --repo "${GITHUB_REPOSITORY}" repos/${GITHUB_REPOSITORY}/releases/tags/${TAG} >/dev/null 2>&1; then
             echo "Release exists; uploading assets with --clobber (overwrite same-name only)"
-            gh release upload "$TAG" "${FILES[@]}" --clobber
+            gh release upload "$TAG" "${FILES[@]}" --clobber --repo "${GITHUB_REPOSITORY}"
           else
             echo "Creating release $TAG and uploading assets"
-            gh release create "$TAG" "${FILES[@]}" --title "Release $TAG" --generate-notes
+            gh release create "$TAG" "${FILES[@]}" --title "Release $TAG" --generate-notes --repo "${GITHUB_REPOSITORY}"
           fi
 
       
