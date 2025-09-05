@@ -73,6 +73,15 @@ jobs:
           sudo apt-get install -y gcc-mips-linux-gnu gcc-mipsel-linux-gnu gcc-mips64-linux-gnuabi64 gcc-mips64el-linux-gnuabi64 || true
           sudo apt-get install -y gcc-riscv64-linux-gnu || true
 
+      - name: Ensure Homebrew in PATH
+        if: matrix.os == 'darwin'
+        run: |
+          if [ -d /opt/homebrew/bin ]; then
+            echo "/opt/homebrew/bin" >> $GITHUB_PATH
+          elif [ -d /usr/local/bin ]; then
+            echo "/usr/local/bin" >> $GITHUB_PATH
+          fi
+          
       - name: Install dependencies (macOS)
         if: matrix.os == 'darwin'
         run: |
