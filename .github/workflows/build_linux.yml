@@ -161,17 +161,25 @@ jobs:
 
       - name: Create GitHub Release
         if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            .release/flat/*
-            .release/flat/checksums.txt
-          name: Release ${{ github.ref_name }}
-          tag_name: ${{ github.ref_name }}
-          generate_release_notes: true
-          overwrite: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${{ github.ref_name }}"
+          FILES=(.release/flat/* .release/flat/checksums.txt)
+          echo "Publishing release assets for $TAG: ${FILES[*]}"
+          # Check if release exists
+          if gh api repos/${GITHUB_REPOSITORY}/releases/tags/${TAG} >/dev/null 2>&1; then
+            echo "Release exists; uploading assets with --clobber (overwrite same-name only)"
+            gh release upload "$TAG" "${FILES[@]}" --clobber
+          else
+            echo "Creating release $TAG and uploading assets"
+            gh release create "$TAG" "${FILES[@]}" --title "Release $TAG" --generate-notes
+          fi
+
+      
 
       - name: Upload to remote via rsync
         if: startsWith(github.ref, 'refs/tags/')
