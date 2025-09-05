@@ -62,8 +62,8 @@ jobs:
           PKG_DIR="$GITHUB_WORKSPACE/.pkg/${{ steps.tag.outputs.tag }}"
           mkdir -p "$OUT_DIR" "$PKG_DIR"
 
-          make -C src -f "src/Makefile.mingw_x86_64" clean
-          make -C src -f "src/Makefile.mingw_x86_64" install
+          make -C src -f "Makefile.mingw_x86_64" clean
+          make -C src -f "Makefile.mingw_x86_64" install
           if [ -d src/bin ]; then mv src/bin/* "$OUT_DIR/"; elif [ -d bin ]; then mv bin/* "$OUT_DIR/"; fi
 
       - name: Package
