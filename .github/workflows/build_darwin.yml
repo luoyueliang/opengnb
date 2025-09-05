@@ -121,10 +121,10 @@ jobs:
 
       - name: Publish to download.mynet.club
         env:
-          DOWNLOAD_SSH_HOST: ${{ secrets.DOWNLOAD_SSH_HOST }}
-          DOWNLOAD_SSH_USER: ${{ secrets.DOWNLOAD_SSH_USER }}
-          DOWNLOAD_SSH_KEY: ${{ secrets.DOWNLOAD_SSH_KEY }}
-          DOWNLOAD_SSH_REMOTE_DIR: ${{ secrets.DOWNLOAD_SSH_REMOTE_DIR }}
+          SSH_HOST: ${{ secrets.DOWNLOAD_SSH_HOST }}
+          SSH_USER: ${{ secrets.DOWNLOAD_SSH_USER }}
+          SSH_PORT: ${{ secrets.DOWNLOAD_SSH_PORT }}
+          REMOTE_DIR: ${{ secrets.DOWNLOAD_SSH_REMOTE_DIR }}
         run: |
           if [ -z "${DOWNLOAD_SSH_HOST:-}" ] || [ -z "${DOWNLOAD_SSH_USER:-}" ] || [ -z "${DOWNLOAD_SSH_KEY:-}" ] || [ -z "${DOWNLOAD_SSH_REMOTE_DIR:-}" ]; then
             echo "SSH upload skipped (secrets not configured)."

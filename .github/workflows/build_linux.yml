@@ -153,26 +153,88 @@ jobs:
           cd .release/flat
           sha256sum $(ls | grep -v '^checksums.txt$') > checksums.txt
 
+      - name: Upload aggregated checksums artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: checksums
+          path: .release/flat/checksums.txt
+
       - name: Create GitHub Release
+        if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: .release/flat/*
+          files: |
+            .release/flat/*
+            .release/flat/checksums.txt
+          name: Release ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          generate_release_notes: true
+          overwrite: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Publish to download.mynet.club
+      - name: Upload to remote via rsync
+        if: startsWith(github.ref, 'refs/tags/')
         env:
-          DOWNLOAD_SSH_HOST: ${{ secrets.DOWNLOAD_SSH_HOST }}
-          DOWNLOAD_SSH_USER: ${{ secrets.DOWNLOAD_SSH_USER }}
-          DOWNLOAD_SSH_KEY: ${{ secrets.DOWNLOAD_SSH_KEY }}
-          DOWNLOAD_SSH_REMOTE_DIR: ${{ secrets.DOWNLOAD_SSH_REMOTE_DIR }}
+          SSH_HOST: ${{ secrets.DOWNLOAD_SSH_HOST }}
+          SSH_USER: ${{ secrets.DOWNLOAD_SSH_USER }}
+          SSH_KEY: ${{ secrets.DOWNLOAD_SSH_KEY }}
+          SSH_PORT: ${{ secrets.DOWNLOAD_SSH_PORT }}
+          REMOTE_DIR: ${{ secrets.DOWNLOAD_SSH_REMOTE_DIR }}
+        shell: bash
         run: |
-          if [ -z "${DOWNLOAD_SSH_HOST:-}" ] || [ -z "${DOWNLOAD_SSH_USER:-}" ] || [ -z "${DOWNLOAD_SSH_KEY:-}" ] || [ -z "${DOWNLOAD_SSH_REMOTE_DIR:-}" ]; then
-            echo "SSH upload skipped (secrets not configured)."
+          set -euo pipefail
+          echo "::group::Upload debug: env summary"
+          SRC_DIR=".release/flat"
+          if [[ ! -d "$SRC_DIR" ]]; then
+            echo "$SRC_DIR not found; nothing to upload"
             exit 0
           fi
+          TAG="${{ github.ref_name }}"
+          # Validate secrets
+          if [[ -z "${SSH_HOST:-}" || -z "${SSH_USER:-}" || -z "${SSH_KEY:-}" || -z "${REMOTE_DIR:-}" ]]; then
+            echo "SSH upload skipped (secrets not fully configured)."
+            exit 0
+          fi
+          PORT="${SSH_PORT:-22}"
+          DEST_DIR="${REMOTE_DIR%/}/${TAG}/"
+          echo "TAG=$TAG"
+          echo "SSH_HOST=$SSH_HOST PORT=$PORT"
+          echo "DEST_DIR=$DEST_DIR"
+          echo "Listing $SRC_DIR:"; ls -la "$SRC_DIR" || true; echo "Sizes:"; du -sh "$SRC_DIR"/* 2>/dev/null || true
+          echo "::endgroup::"
+
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
-          echo "$DOWNLOAD_SSH_KEY" > ~/.ssh/id_rsa
+          echo "$SSH_KEY" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          rsync -avz --delete .release/flat/ ${DOWNLOAD_SSH_USER}@${DOWNLOAD_SSH_HOST}:${DOWNLOAD_SSH_REMOTE_DIR}/
+          # Populate known_hosts for given host:port with all common key types and bracketed form for non-22
+          if [[ "$PORT" != "22" ]]; then
+            ssh-keyscan -p "$PORT" -t rsa,ecdsa,ed25519 "$SSH_HOST" \
+              | awk -v h="$SSH_HOST" -v p="$PORT" '{ $1 = "["h"]:"p; print }' \
+              >> ~/.ssh/known_hosts 2>/dev/null || true
+          else
+            ssh-keyscan -p "$PORT" -t rsa,ecdsa,ed25519 "$SSH_HOST" \
+              >> ~/.ssh/known_hosts 2>/dev/null || true
+          fi
+          chmod 644 ~/.ssh/known_hosts || true
+          echo "::group::Upload debug: known_hosts"
+          echo "known_hosts entries:"; wc -l ~/.ssh/known_hosts || true; head -n 5 ~/.ssh/known_hosts || true
+          echo "::endgroup::"
+
+          SSH_OPTS="-i ~/.ssh/id_rsa -p $PORT -o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/known_hosts -o BatchMode=yes -o ConnectTimeout=15"
+          echo "::group::Upload debug: SSH connectivity test (-vvv)"
+          ssh -vvv $SSH_OPTS "$SSH_USER@$SSH_HOST" "echo 'SSH OK'; uname -a" || { echo "SSH connectivity failed"; exit 1; }
+          echo "::endgroup::"
+
+          echo "::group::Upload debug: prepare remote dir"
+          ssh $SSH_OPTS "$SSH_USER@$SSH_HOST" "mkdir -p '$DEST_DIR' && echo 'Remote dir prepared: $DEST_DIR'"
+          echo "::endgroup::"
+
+          echo "::group::Upload debug: rsync dry-run (-n)"
+          rsync -avzn --delete -e "ssh $SSH_OPTS" "$SRC_DIR/" "$SSH_USER@$SSH_HOST:$DEST_DIR" || { echo "rsync dry-run failed"; exit 1; }
+          echo "::endgroup::"
+
+          echo "::group::Upload: rsync real run"
+          rsync -avz --delete -e "ssh $SSH_OPTS" "$SRC_DIR/" "$SSH_USER@$SSH_HOST:$DEST_DIR"
+          echo "::endgroup::"

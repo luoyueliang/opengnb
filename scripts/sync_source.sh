@@ -297,7 +297,7 @@ if is_tty; then
       else
         git push -u "$PUSH_REMOTE" "$PUSH_BRANCH"
       fi
-      git push "$PUSH_REMOTE" "$TAG_NAME"
+      git push -f "$PUSH_REMOTE" "$TAG_NAME"
       echo "Pushed to $PUSH_REMOTE/$PUSH_BRANCH and tag $TAG_NAME."
     else
       echo "Skip pushing."
