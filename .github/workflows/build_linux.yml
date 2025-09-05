@@ -1,4 +1,4 @@
-name: Build GNB
+name: Build GNB For Linux, OpenWrt
 
 on:
   workflow_dispatch:
@@ -46,8 +46,8 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
         with:
-          repository: luoyueliang/gnb
-          token: ${{ secrets.PRIVATE_REPO_PAT }}
+          ref: ${{ github.ref }}
+          fetch-depth: 0
 
       - name: Extract tag
         id: tag
@@ -75,6 +75,7 @@ jobs:
           
       - name: Setup cross compiler and static flags
         run: |
+          MF="src/${{ matrix.makefile }}"
           # Cross compiler
           case "${{ matrix.arch }}" in
             amd64)        export CC=gcc ;;
@@ -95,10 +96,12 @@ jobs:
           # Static linking tweaks (only linux/openwrt)
           case "${{ matrix.os }}" in
             linux|openwrt)
-              sed -i "s|\(${CC} -o ${GNB_CTL}\)|\1 -static|g" ${{ matrix.makefile }} || true
-              sed -i "s|\(${CC} -o ${GNB_ES}\)|\1 -static|g" ${{ matrix.makefile }} || true
-              sed -i "s|\(${CC} -o ${GNB_CRYPTO}\)|\1 -static|g" ${{ matrix.makefile }} || true
-              sed -i "s|\(${CC} -o ${GNB_CLI}\)|\1 -static|g" ${{ matrix.makefile }} || true
+              if [ -f "$MF" ]; then
+                sed -i "s|\(${CC} -o ${GNB_CTL}\)|\1 -static|g" "$MF" || true
+                sed -i "s|\(${CC} -o ${GNB_ES}\)|\1 -static|g" "$MF" || true
+                sed -i "s|\(${CC} -o ${GNB_CRYPTO}\)|\1 -static|g" "$MF" || true
+                sed -i "s|\(${CC} -o ${GNB_CLI}\)|\1 -static|g" "$MF" || true
+              fi
               ;;
           esac
 
@@ -113,9 +116,9 @@ jobs:
           PKG_DIR="$GITHUB_WORKSPACE/.pkg/${{ steps.tag.outputs.tag }}"
           mkdir -p "$OUT_DIR" "$PKG_DIR"
 
-          make -f "${{ matrix.makefile }}" clean
-          make -f "${{ matrix.makefile }}" install
-          if [ -d bin ]; then mv bin/* "$OUT_DIR/"; fi
+          make -C src -f "${{ matrix.makefile }}" clean
+          make -C src -f "${{ matrix.makefile }}" install
+          if [ -d src/bin ]; then mv src/bin/* "$OUT_DIR/"; elif [ -d bin ]; then mv bin/* "$OUT_DIR/"; fi
 
       - name: Package
         run: |
