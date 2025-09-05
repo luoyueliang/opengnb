@@ -36,8 +36,15 @@ jobs:
 
       - name: Install dependencies (Homebrew)
         run: |
-          brew update
-          brew install cmake ninja || true
+          set -e
+          brew update || true
+          # cmake may already be installed from another tap; avoid reinstall conflicts
+          if ! brew list --versions cmake >/dev/null 2>&1; then
+            brew install cmake || true
+          fi
+          if ! brew list --versions ninja >/dev/null 2>&1; then
+            brew install ninja || true
+          fi
 
       - name: Modify Makefile for macOS static preferences
         run: |
