@@ -42,12 +42,12 @@ jobs:
           - { os: openwrt, platform: linux, arch: mips64el,     makefile: Makefile.openwrt }
           - { os: openwrt, platform: linux, arch: riscv64,      makefile: Makefile.openwrt }
           # Darwin
-          - { os: darwin, platform: darwin, arch: amd64, makefile: Makefile.Darwin }
-          - { os: darwin, platform: darwin, arch: arm64, makefile: Makefile.Darwin }
+          - { os: darwin, platform: darwin, arch: amd64, makefile: Makefile.Darwin, runner: macos-latest }
+          - { os: darwin, platform: darwin, arch: arm64, makefile: Makefile.Darwin, runner: macos-latest }
           # Windows
-          - { os: windows, platform: windows, arch: amd64, makefile: Makefile.mingw_x86_64 }
-          - { os: windows, platform: windows, arch: 386,   makefile: Makefile.mingw_x86_64 }
-          - { os: windows, platform: windows, arch: arm64, makefile: Makefile.mingw_x86_64 }
+          - { os: windows, platform: windows, arch: amd64, makefile: Makefile.mingw_x86_64, runner: windows-latest }
+          - { os: windows, platform: windows, arch: 386,   makefile: Makefile.mingw_x86_64, runner: windows-latest }
+          - { os: windows, platform: windows, arch: arm64, makefile: Makefile.mingw_x86_64, runner: windows-latest }
           # FreeBSD
           - { os: freebsd, platform: freebsd, arch: amd64, makefile: Makefile.freebsd, runner: freebsd-13 }
           - { os: freebsd, platform: freebsd, arch: arm64, makefile: Makefile.freebsd, runner: freebsd-13 }
