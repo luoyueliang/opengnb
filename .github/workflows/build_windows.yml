@@ -1,0 +1,163 @@
+name: Build GNB For Windows (MinGW)
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*.*.*"
+
+env:
+  PROJECT: gnb
+  BASE_URL: "https://download.mynet.club/gnb"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+
+      - name: Extract tag
+        id: tag
+        run: echo "tag=${GITHUB_REF##*/}" >> "$GITHUB_OUTPUT"
+
+      - name: Install MinGW-w64 cross-compiler
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mingw-w64
+
+      - name: Tweak Makefile for static linking (best-effort)
+        run: |
+          MF="src/Makefile.mingw_x86_64"
+          if [ -f "$MF" ]; then
+            sed -i 's/\(\$(CC) -o \$(GNB_CTL)\)/\1 -static/' "$MF" || true
+            sed -i 's/\(\$(CC) -o \$(GNB_ES)\)/\1 -static/' "$MF" || true
+            sed -i 's/\(\$(CC) -o \$(GNB_CRYPTO)\)/\1 -static/' "$MF" || true
+            sed -i 's/\(\$(CC) -o \$(GNB_CLI)\)/\1 -static/' "$MF" || true
+          fi
+
+      - name: Build (MinGW cross)
+        shell: bash
+        run: |
+          set -euo pipefail
+          export PREFIX=x86_64-w64-mingw32
+          export CC=$PREFIX-gcc
+          export CXX=$PREFIX-g++
+          export CPP=$PREFIX-cpp
+          export LD=$PREFIX-ld
+          export RANLIB=$PREFIX-ranlib
+          export WINDRES=$PREFIX-windres
+          export PATH="/usr/x86_64-w64-mingw32/bin:$PATH"
+          export CFLAGS=-I/usr/x86_64-w64-mingw32/include/
+          export LDFLAGS=-L/usr/x86_64-w64-mingw32/lib/
+
+          OUT_DIR="$GITHUB_WORKSPACE/.out/${{ steps.tag.outputs.tag }}/windows/x86_64"
+          PKG_DIR="$GITHUB_WORKSPACE/.pkg/${{ steps.tag.outputs.tag }}"
+          mkdir -p "$OUT_DIR" "$PKG_DIR"
+
+          make -C src -f "src/Makefile.mingw_x86_64" clean
+          make -C src -f "src/Makefile.mingw_x86_64" install
+          if [ -d src/bin ]; then mv src/bin/* "$OUT_DIR/"; elif [ -d bin ]; then mv bin/* "$OUT_DIR/"; fi
+
+      - name: Package
+        run: |
+          OUT_DIR="$GITHUB_WORKSPACE/.out/${{ steps.tag.outputs.tag }}/windows/x86_64"
+          PKG_DIR="$GITHUB_WORKSPACE/.pkg/${{ steps.tag.outputs.tag }}"
+          ARCHIVE="${PROJECT}_windows_x86_64_${{ steps.tag.outputs.tag }}.tar.gz"
+          tar -czvf "$ARCHIVE" -C "$OUT_DIR" .
+          mkdir -p "$PKG_DIR"
+          mv "$ARCHIVE" "$PKG_DIR/"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: gnb-windows-x86_64
+          path: .pkg/${{ steps.tag.outputs.tag }}/*
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: .release/
+
+      - name: Flatten artifacts
+        run: |
+          mkdir -p .release/flat
+          find .release -type f -name "*.tar.gz" -exec mv {} .release/flat/ \;
+
+      - name: Generate checksums
+        run: |
+          cd .release/flat
+          sha256sum $(ls | grep -v '^checksums.txt$') > checksums.txt
+
+      - name: Create/Update GitHub Release (clobber same-name assets only)
+        if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/')
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${{ github.ref_name }}"
+          FILES=(.release/flat/*)
+          echo "Publishing release assets for $TAG: ${FILES[*]}"
+          echo "Trying upload with --clobber (if release missing, will create then retry)"
+          if ! gh release upload "$TAG" "${FILES[@]}" --clobber --repo "${GITHUB_REPOSITORY}"; then
+            echo "Upload failed (release may not exist). Creating release then retrying upload..."
+            gh release create "$TAG" --title "Release $TAG" --generate-notes --repo "${GITHUB_REPOSITORY}" || true
+            gh release upload "$TAG" "${FILES[@]}" --clobber --repo "${GITHUB_REPOSITORY}"
+          fi
+
+      - name: Upload to remote via rsync (debug, no delete)
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          SSH_HOST: ${{ secrets.DOWNLOAD_SSH_HOST }}
+          SSH_USER: ${{ secrets.DOWNLOAD_SSH_USER }}
+          SSH_KEY: ${{ secrets.DOWNLOAD_SSH_KEY }}
+          SSH_PORT: ${{ secrets.DOWNLOAD_SSH_PORT }}
+          REMOTE_DIR: ${{ secrets.DOWNLOAD_SSH_REMOTE_DIR }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "::group::Upload debug: env summary"
+          SRC_DIR=".release/flat"
+          if [[ ! -d "$SRC_DIR" ]]; then
+            echo "$SRC_DIR not found; nothing to upload"; exit 0; fi
+          TAG="${{ github.ref_name }}"
+          if [[ -z "${SSH_HOST:-}" || -z "${SSH_USER:-}" || -z "${SSH_KEY:-}" || -z "${REMOTE_DIR:-}" ]]; then
+            echo "SSH upload skipped (secrets not fully configured)."; exit 0; fi
+          PORT="${SSH_PORT:-22}"
+          DEST_DIR="${REMOTE_DIR%/}/${TAG}/"
+          echo "TAG=$TAG"; echo "SSH_HOST=$SSH_HOST PORT=$PORT"; echo "DEST_DIR=$DEST_DIR"
+          echo "Listing $SRC_DIR:"; ls -la "$SRC_DIR" || true; du -sh "$SRC_DIR"/* 2>/dev/null || true
+          echo "::endgroup::"
+
+          mkdir -p ~/.ssh; chmod 700 ~/.ssh
+          echo "$SSH_KEY" > ~/.ssh/id_rsa; chmod 600 ~/.ssh/id_rsa
+          if [[ "$PORT" != "22" ]]; then
+            ssh-keyscan -p "$PORT" -t rsa,ecdsa,ed25519 "$SSH_HOST" | awk -v h="$SSH_HOST" -v p="$PORT" '{ $1 = "["h"]:"p; print }' >> ~/.ssh/known_hosts 2>/dev/null || true
+          else
+            ssh-keyscan -p "$PORT" -t rsa,ecdsa,ed25519 "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+          fi
+          chmod 644 ~/.ssh/known_hosts || true
+          echo "::group::Upload debug: known_hosts"; wc -l ~/.ssh/known_hosts || true; head -n 5 ~/.ssh/known_hosts || true; echo "::endgroup::"
+
+          SSH_OPTS="-i ~/.ssh/id_rsa -p $PORT -o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/known_hosts -o BatchMode=yes -o ConnectTimeout=15"
+          echo "::group::Upload debug: SSH -vvv connectivity test"; ssh -vvv $SSH_OPTS "$SSH_USER@$SSH_HOST" "echo 'SSH OK'; uname -a" || { echo "SSH connectivity failed"; exit 1; }; echo "::endgroup::"
+
+          echo "::group::Upload debug: prepare remote dir"; ssh $SSH_OPTS "$SSH_USER@$SSH_HOST" "mkdir -p '$DEST_DIR' && echo 'Remote dir prepared: $DEST_DIR'"; echo "::endgroup::"
+
+          echo "::group::Upload debug: rsync dry-run (-n)"; rsync -avzn -e "ssh $SSH_OPTS" "$SRC_DIR/" "$SSH_USER@$SSH_HOST:$DEST_DIR" || { echo "rsync dry-run failed"; exit 1; }; echo "::endgroup::"
+
+          echo "::group::Upload: rsync real run"; rsync -avz -e "ssh $SSH_OPTS" "$SRC_DIR/" "$SSH_USER@$SSH_HOST:$DEST_DIR"; echo "::endgroup::"
+ 
