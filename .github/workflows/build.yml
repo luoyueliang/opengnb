@@ -76,11 +76,6 @@ jobs:
       - name: Install dependencies (macOS)
         if: matrix.os == 'darwin'
         run: |
-          if ! command -v brew >/dev/null 2>&1; then
-            /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-            echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> $GITHUB_ENV
-            eval "$(/opt/homebrew/bin/brew shellenv)"
-          fi
           brew update
           brew install cmake ninja || true
 
