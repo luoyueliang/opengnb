@@ -168,15 +168,15 @@ jobs:
         run: |
           set -euo pipefail
           TAG="${{ github.ref_name }}"
-          FILES=(.release/flat/* .release/flat/checksums.txt)
+          FILES=(.release/flat/*)
           echo "Publishing release assets for $TAG: ${FILES[*]}"
-          # Check if release exists
-          if gh api --repo "${GITHUB_REPOSITORY}" repos/${GITHUB_REPOSITORY}/releases/tags/${TAG} >/dev/null 2>&1; then
-            echo "Release exists; uploading assets with --clobber (overwrite same-name only)"
+          echo "Trying upload with --clobber (if release missing, will create then retry)"
+          if ! gh release upload "$TAG" "${FILES[@]}" --clobber --repo "${GITHUB_REPOSITORY}"; then
+            echo "Upload failed (release may not exist). Creating release shell then retrying upload..."
+            # Create release without assets; ignore failure if it already exists
+            gh release create "$TAG" --title "Release $TAG" --generate-notes --repo "${GITHUB_REPOSITORY}" || true
+            # Retry upload (will overwrite same-name only)
             gh release upload "$TAG" "${FILES[@]}" --clobber --repo "${GITHUB_REPOSITORY}"
-          else
-            echo "Creating release $TAG and uploading assets"
-            gh release create "$TAG" "${FILES[@]}" --title "Release $TAG" --generate-notes --repo "${GITHUB_REPOSITORY}"
           fi
 
       
