@@ -1,0 +1,113 @@
+name: Build BSD
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*.*.*"
+
+env:
+  PROJECT: gnb
+  BASE_URL: "https://download.mynet.club/gnb"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-freebsd:
+    runs-on: ubuntu-latest
+    name: FreeBSD amd64 Build
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup FreeBSD VM
+        uses: vmactions/freebsd-vm@v1
+        with:
+          release: "13.2"
+          usesh: true
+          prepare: |
+            pkg install -y gmake git
+
+      - name: Build FreeBSD Binary
+        uses: vmactions/freebsd-vm@v1
+        with:
+          run: |
+            sed -i '' 's/^CC.*=/CC ?= cc/' Makefile.freebsd
+            sed -i '' 's/^CFLAGS.*=/CFLAGS ?= -O2 -pipe/' Makefile.freebsd
+            sed -i '' 's/^LDFLAGS.*=/LDFLAGS ?=/' Makefile.freebsd
+
+            gmake -f Makefile.freebsd clean
+            gmake -f Makefile.freebsd
+
+            mkdir -p output
+            cp gnb output/gnb-freebsd-amd64
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gnb-freebsd-amd64
+          path: output/gnb-freebsd-amd64
+
+  build-openbsd:
+    runs-on: ubuntu-latest
+    name: OpenBSD amd64 Build
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup OpenBSD VM
+        uses: vmactions/openbsd-vm@v1
+        with:
+          release: "7.5"
+          usesh: true
+          prepare: |
+            pkg_add gmake git
+
+      - name: Build OpenBSD Binary
+        uses: vmactions/openbsd-vm@v1
+        with:
+          run: |
+            sed -i 's/^CC.*=/CC ?= cc/' Makefile.openbsd
+            sed -i 's/^CFLAGS.*=/CFLAGS ?= -O2 -pipe/' Makefile.openbsd
+            sed -i 's/^LDFLAGS.*=/LDFLAGS ?=/' Makefile.openbsd
+
+            gmake -f Makefile.openbsd clean
+            gmake -f Makefile.openbsd
+
+            mkdir -p output
+            cp gnb output/gnb-openbsd-amd64
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gnb-openbsd-amd64
+          path: output/gnb-openbsd-amd64
+
+  release:
+    runs-on: ubuntu-latest
+    needs: [build-freebsd, build-openbsd]
+    steps:
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+
+      - name: Display files
+        run: ls -R ./artifacts
+
+      - name: Release and Publish
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/**/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload to Download Server
+        run: |
+          echo "${DOWNLOAD_SSH_KEY}" > id_rsa
+          chmod 600 id_rsa
+          rsync -avz -e "ssh -o StrictHostKeyChecking=no -i id_rsa" ./artifacts/ ${DOWNLOAD_SSH_USER}@${DOWNLOAD_SSH_HOST}:${DOWNLOAD_SSH_REMOTE_DIR}/
+        env:
+          DOWNLOAD_SSH_HOST: ${{ secrets.DOWNLOAD_SSH_HOST }}
+          DOWNLOAD_SSH_USER: ${{ secrets.DOWNLOAD_SSH_USER }}
+          DOWNLOAD_SSH_KEY: ${{ secrets.DOWNLOAD_SSH_KEY }}
+          DOWNLOAD_SSH_REMOTE_DIR: ${{ secrets.DOWNLOAD_SSH_REMOTE_DIR }}
