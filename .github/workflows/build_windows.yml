@@ -58,7 +58,7 @@ jobs:
           export CFLAGS=-I/usr/x86_64-w64-mingw32/include/
           export LDFLAGS=-L/usr/x86_64-w64-mingw32/lib/
 
-          OUT_DIR="$GITHUB_WORKSPACE/.out/${{ steps.tag.outputs.tag }}/windows/x86_64"
+          OUT_DIR="$GITHUB_WORKSPACE/.out/${{ steps.tag.outputs.tag }}/windows/x86_64/bin"
           PKG_DIR="$GITHUB_WORKSPACE/.pkg/${{ steps.tag.outputs.tag }}"
           mkdir -p "$OUT_DIR" "$PKG_DIR"
 
@@ -68,10 +68,10 @@ jobs:
 
       - name: Package
         run: |
-          OUT_DIR="$GITHUB_WORKSPACE/.out/${{ steps.tag.outputs.tag }}/windows/x86_64"
+          OUT_PARENT="$GITHUB_WORKSPACE/.out/${{ steps.tag.outputs.tag }}/windows/x86_64"
           PKG_DIR="$GITHUB_WORKSPACE/.pkg/${{ steps.tag.outputs.tag }}"
-          ARCHIVE="${PROJECT}_windows_x86_64_${{ steps.tag.outputs.tag }}.tar.gz"
-          tar -czvf "$ARCHIVE" -C "$OUT_DIR" .
+          ARCHIVE="${PROJECT}_windows_x86_64_${{ steps.tag.outputs.tag }}.tgz"
+          tar -czvf "$ARCHIVE" -C "$OUT_PARENT" bin
           mkdir -p "$PKG_DIR"
           mv "$ARCHIVE" "$PKG_DIR/"
 
@@ -93,7 +93,7 @@ jobs:
       - name: Flatten artifacts
         run: |
           mkdir -p .release/flat
-          find .release -type f -name "*.tar.gz" -exec mv {} .release/flat/ \;
+          find .release -type f -name "*.tgz" -exec mv {} .release/flat/ \;
 
       - name: Generate checksums
         run: |

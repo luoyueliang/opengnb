@@ -112,7 +112,7 @@ jobs:
 
       - name: Build
         run: |
-          OUT_DIR="$GITHUB_WORKSPACE/.out/${{ steps.tag.outputs.tag }}/${{ matrix.os }}/${{ matrix.arch }}"
+          OUT_DIR="$GITHUB_WORKSPACE/.out/${{ steps.tag.outputs.tag }}/${{ matrix.os }}/${{ matrix.arch }}/bin"
           PKG_DIR="$GITHUB_WORKSPACE/.pkg/${{ steps.tag.outputs.tag }}"
           mkdir -p "$OUT_DIR" "$PKG_DIR"
 
@@ -122,10 +122,10 @@ jobs:
 
       - name: Package
         run: |
-          OUT_DIR="$GITHUB_WORKSPACE/.out/${{ steps.tag.outputs.tag }}/${{ matrix.os }}/${{ matrix.arch }}"
+          OUT_PARENT="$GITHUB_WORKSPACE/.out/${{ steps.tag.outputs.tag }}/${{ matrix.os }}/${{ matrix.arch }}"
           PKG_DIR="$GITHUB_WORKSPACE/.pkg/${{ steps.tag.outputs.tag }}"
-          ARCHIVE="${PROJECT}_${{ matrix.os }}_${{ matrix.arch }}_${{ steps.tag.outputs.tag }}.tar.gz"
-          tar -czvf "$ARCHIVE" -C "$OUT_DIR" .
+          ARCHIVE="${PROJECT}_${{ matrix.os }}_${{ matrix.arch }}_${{ steps.tag.outputs.tag }}.tgz"
+          tar -czvf "$ARCHIVE" -C "$OUT_PARENT" bin
           mv "$ARCHIVE" "$PKG_DIR/"
 
       - name: Upload artifacts
@@ -146,7 +146,7 @@ jobs:
       - name: Flatten artifacts
         run: |
           mkdir -p .release/flat
-          find .release -type f -name "*.tar.gz" -exec mv {} .release/flat/ \;
+          find .release -type f -name "*.tgz" -exec mv {} .release/flat/ \;
 
       - name: Generate checksums
         run: |
