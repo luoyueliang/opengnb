@@ -96,13 +96,17 @@ jobs:
               ;;
             mipsel-muslsf)
               if [ ! -d mipsel-linux-muslsf-cross ]; then
+                echo "Downloading mipsel-linux-muslsf-cross toolchain..."
                 if wget -q https://musl.cc/mipsel-linux-muslsf-cross.tgz -O mipsel-linux-muslsf-cross.tgz; then
+                  echo "Extracting mipsel-linux-muslsf-cross toolchain..."
                   tar -xzf mipsel-linux-muslsf-cross.tgz && musl_available=true
+                  echo "Toolchain extracted successfully"
                 else
                   echo "WARN: mipsel-muslsf musl download failed, will use glibc cross-compiler"
                 fi
               else
                 musl_available=true
+                echo "mipsel-linux-muslsf-cross toolchain already exists"
               fi
               if [ "$musl_available" = "true" ] && [ -d mipsel-linux-muslsf-cross/bin ]; then
                 echo "/tmp/mipsel-linux-muslsf-cross/bin" >> $GITHUB_PATH
@@ -186,7 +190,10 @@ jobs:
                 STATIC_LINKING=true  # musl支持静态链接
                 echo "Using musl toolchain for ${{ matrix.arch }}: mipsel-linux-muslsf-gcc"
               else
-                echo "ERROR: mipsel-muslsf requires musl toolchain but not found"
+                echo "ERROR: mipsel-muslsf requires mipsel-linux-muslsf-gcc but not found in PATH"
+                echo "Available gcc compilers:"
+                find /tmp -name "*gcc" 2>/dev/null || echo "No gcc found in /tmp"
+                echo "PATH: $PATH"
                 exit 1
               fi
               ;;
