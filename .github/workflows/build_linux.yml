@@ -246,7 +246,7 @@ jobs:
           export AR=${CC/gcc/ar}
           export RANLIB=${CC/gcc/ranlib}
 
-          # 软浮点平台的特殊编译标志
+          # 软浮点平台的特殊编译标志 - 通过环境变量设置
           case "${{ matrix.arch }}" in
             mipsel-muslsf)
               export CFLAGS="-march=mips32r2 -mtune=mips32r2 -msoft-float"
@@ -262,6 +262,10 @@ jobs:
               export CFLAGS="-march=armv7-a -mfloat-abi=hard -mfpu=vfpv3-d16"
               export LDFLAGS="-mfloat-abi=hard"
               echo "Applied hard-float flags for armv7-hardfp"
+              ;;
+            *)
+              # 清空环境变量，使用Makefile默认值
+              unset CFLAGS LDFLAGS
               ;;
           esac
 
@@ -297,41 +301,16 @@ jobs:
           # 根据是否支持静态链接来构建
           if [ "${STATIC_LINKING:-false}" = "true" ]; then
             echo "Building with static linking..."
-            # 只在有特殊编译标志的情况下才传递CFLAGS和LDFLAGS
-            case "${{ matrix.arch }}" in
-              mipsel-muslsf|armv7-softfp|armv7-hardfp)
-                make -C src -f "${{ matrix.makefile }}" install \
-                  CC="$CC" \
-                  CFLAGS="\$(CFLAGS) $CFLAGS" \
-                  LDFLAGS="\$(LDFLAGS) $LDFLAGS" \
-                  CLI_LDFLAGS="-static $CLI_LDFLAGS" \
-                  GNB_ES_LDFLAGS="-static $GNB_ES_LDFLAGS"
-                ;;
-              *)
-                make -C src -f "${{ matrix.makefile }}" install \
-                  CC="$CC" \
-                  CLI_LDFLAGS="-static $CLI_LDFLAGS" \
-                  GNB_ES_LDFLAGS="-static $GNB_ES_LDFLAGS"
-                ;;
-            esac
+            make -C src -f "${{ matrix.makefile }}" install \
+              CC="$CC" \
+              CLI_LDFLAGS="-static $CLI_LDFLAGS" \
+              GNB_ES_LDFLAGS="-static $GNB_ES_LDFLAGS"
           else
             echo "Building with dynamic linking..."
-            case "${{ matrix.arch }}" in
-              mipsel-muslsf|armv7-softfp|armv7-hardfp)
-                make -C src -f "${{ matrix.makefile }}" install \
-                  CC="$CC" \
-                  CFLAGS="\$(CFLAGS) $CFLAGS" \
-                  LDFLAGS="\$(LDFLAGS) $LDFLAGS" \
-                  CLI_LDFLAGS="$CLI_LDFLAGS" \
-                  GNB_ES_LDFLAGS="$GNB_ES_LDFLAGS"
-                ;;
-              *)
-                make -C src -f "${{ matrix.makefile }}" install \
-                  CC="$CC" \
-                  CLI_LDFLAGS="$CLI_LDFLAGS" \
-                  GNB_ES_LDFLAGS="$GNB_ES_LDFLAGS"
-                ;;
-            esac
+            make -C src -f "${{ matrix.makefile }}" install \
+              CC="$CC" \
+              CLI_LDFLAGS="$CLI_LDFLAGS" \
+              GNB_ES_LDFLAGS="$GNB_ES_LDFLAGS"
           fi
           
           if [ -d src/bin ]; then mv src/bin/* "$OUT_DIR/"; elif [ -d bin ]; then mv bin/* "$OUT_DIR/"; fi
