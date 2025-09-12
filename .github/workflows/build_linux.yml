@@ -97,32 +97,44 @@ jobs:
             mipsel-muslsf)
               musl_available=false
               if [ ! -d mipsel-linux-muslsf-cross ]; then
-                echo "Downloading mipsel-linux-muslsf-cross toolchain..."
-                # 尝试3次下载
-                for attempt in 1 2 3; do
-                  echo "Download attempt $attempt/3..."
-                  if wget --timeout=30 --tries=2 -q https://musl.cc/mipsel-linux-muslsf-cross.tgz -O mipsel-linux-muslsf-cross.tgz; then
-                    echo "Download successful, extracting..."
-                    if tar -xzf mipsel-linux-muslsf-cross.tgz; then
-                      musl_available=true
-                      echo "Toolchain extracted successfully"
-                      break
-                    else
-                      echo "ERROR: Failed to extract toolchain"
-                      rm -f mipsel-linux-muslsf-cross.tgz
-                    fi
+                echo "Trying to use local mipsel-muslsf toolchain from repository..."
+                if [ -f "$GITHUB_WORKSPACE/.github/toolchains/mipsel-linux-muslsf-cross.tgz" ]; then
+                  echo "Found local toolchain, extracting..."
+                  cp "$GITHUB_WORKSPACE/.github/toolchains/mipsel-linux-muslsf-cross.tgz" .
+                  if tar -xzf mipsel-linux-muslsf-cross.tgz; then
+                    musl_available=true
+                    echo "Local toolchain extracted successfully"
                   else
-                    echo "Download attempt $attempt failed"
-                    rm -f mipsel-linux-muslsf-cross.tgz
-                    if [ $attempt -lt 3 ]; then
-                      echo "Retrying in 5 seconds..."
-                      sleep 5
-                    fi
+                    echo "ERROR: Failed to extract local toolchain"
                   fi
-                done
+                else
+                  echo "Local toolchain not found, downloading from musl.cc..."
+                  # 尝试3次下载
+                  for attempt in 1 2 3; do
+                    echo "Download attempt $attempt/3..."
+                    if wget --timeout=30 --tries=2 -q https://musl.cc/mipsel-linux-muslsf-cross.tgz -O mipsel-linux-muslsf-cross.tgz; then
+                      echo "Download successful, extracting..."
+                      if tar -xzf mipsel-linux-muslsf-cross.tgz; then
+                        musl_available=true
+                        echo "Downloaded toolchain extracted successfully"
+                        break
+                      else
+                        echo "ERROR: Failed to extract downloaded toolchain"
+                        rm -f mipsel-linux-muslsf-cross.tgz
+                      fi
+                    else
+                      echo "Download attempt $attempt failed"
+                      rm -f mipsel-linux-muslsf-cross.tgz
+                      if [ $attempt -lt 3 ]; then
+                        echo "Retrying in 5 seconds..."
+                        sleep 5
+                      fi
+                    fi
+                  done
+                fi
                 
                 if [ "$musl_available" = "false" ]; then
-                  echo "ERROR: All download attempts failed"
+                  echo "ERROR: Both local and remote toolchain setup failed"
                 fi
               else
                 musl_available=true
@@ -246,7 +258,7 @@ jobs:
           export AR=${CC/gcc/ar}
           export RANLIB=${CC/gcc/ranlib}
 
-          # 软浮点平台的特殊编译标志 - 通过环境变量设置
+          # 软浮点平台的特殊编译标志
           case "${{ matrix.arch }}" in
             mipsel-muslsf)
               export CFLAGS="-march=mips32r2 -mtune=mips32r2 -msoft-float"
@@ -262,10 +274,6 @@ jobs:
               export CFLAGS="-march=armv7-a -mfloat-abi=hard -mfpu=vfpv3-d16"
               export LDFLAGS="-mfloat-abi=hard"
               echo "Applied hard-float flags for armv7-hardfp"
-              ;;
-            *)
-              # 清空环境变量，使用Makefile默认值
-              unset CFLAGS LDFLAGS
               ;;
           esac
 
@@ -297,6 +305,18 @@ jobs:
           mkdir -p "$OUT_DIR" "$PKG_DIR"
 
           make -C src -f "${{ matrix.makefile }}" clean
+          
+          # 为特殊架构设置编译标志
+          case "${{ matrix.arch }}" in
+            mipsel-muslsf|armv7-softfp|armv7-hardfp)
+              echo "Setting architecture-specific flags for ${{ matrix.arch }}"
+              echo "Original CFLAGS from env: $CFLAGS"
+              echo "Original LDFLAGS from env: $LDFLAGS"
+              # 直接覆盖CFLAGS/LDFLAGS - 参考openwrt_muslsf.yaml的做法
+              export CFLAGS="$CFLAGS"
+              export LDFLAGS="$LDFLAGS"
+              ;;
+          esac
           
           # 根据是否支持静态链接来构建
           if [ "${STATIC_LINKING:-false}" = "true" ]; then
