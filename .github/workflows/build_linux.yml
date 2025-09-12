@@ -173,7 +173,7 @@ jobs:
           mkdir -p "$OUT_DIR" "$PKG_DIR"
 
           make -C src -f "${{ matrix.makefile }}" clean
-          make -C src -f "${{ matrix.makefile }}" install
+          make -C src -f "${{ matrix.makefile }}" install CC="$CC" CLI_LDFLAGS="-static $CLI_LDFLAGS" GNB_ES_LDFLAGS="-static $GNB_ES_LDFLAGS"
           if [ -d src/bin ]; then mv src/bin/* "$OUT_DIR/"; elif [ -d bin ]; then mv bin/* "$OUT_DIR/"; fi
 
       - name: Verify static binaries
