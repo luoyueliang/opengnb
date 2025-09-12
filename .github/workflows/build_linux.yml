@@ -73,7 +73,7 @@ jobs:
           key: openwrt-musl-${{ matrix.arch }}-${{ runner.os }}-v1
 
       - name: Setup musl / special OpenWrt toolchain
-        if: matrix.os == 'openwrt'
+        if: matrix.os == 'openwrt' || matrix.arch == 'armv7-softfp' || matrix.arch == 'armv7-hardfp'
         run: |
           set -e
           cd /tmp
@@ -92,10 +92,26 @@ jobs:
                 mv mipsel-linux-muslsf-cross musl-cross-${{ matrix.arch }}
               fi
               ;;
+            riscv64)
+              if [ ! -d musl-cross-riscv64-linux-musl ]; then
+                wget -q https://musl.cc/riscv64-linux-musl-cross.tgz -O riscv64-linux-musl-cross.tgz
+                tar -xzf riscv64-linux-musl-cross.tgz
+              fi
+              ;;
+            armv7-softfp|armv7-hardfp)
+              if [ ! -d musl-cross-arm-linux-musleabihf ]; then
+                wget -q https://musl.cc/arm-linux-musleabihf-cross.tgz -O arm-linux-musleabihf-cross.tgz
+                tar -xzf arm-linux-musleabihf-cross.tgz
+              fi
+              ;;
             *) echo "No extra musl toolchain for ${{ matrix.arch }}";;
           esac
+          # 兼容所有 musl 交叉工具链
           if [ -d /tmp/musl-cross-${{ matrix.arch }}/bin ]; then
             echo "/tmp/musl-cross-${{ matrix.arch }}/bin" >> $GITHUB_PATH
+          fi
+          if [ -d /tmp/musl-cross-arm-linux-musleabihf/bin ]; then
+            echo "/tmp/musl-cross-arm-linux-musleabihf/bin" >> $GITHUB_PATH
           fi
       
       
@@ -106,14 +122,25 @@ jobs:
           case "${{ matrix.arch }}" in
             amd64)         export CC=gcc ;;
             arm64)         export CC=aarch64-linux-gnu-gcc ;;
-            armv7-softfp)  export CC=arm-linux-gnueabihf-gcc ;;
-            armv7-hardfp)  export CC=arm-linux-gnueabihf-gcc ;;
+            armv7-softfp|armv7-hardfp)
+              if command -v arm-linux-musleabihf-gcc >/dev/null 2>&1; then
+                export CC=arm-linux-musleabihf-gcc
+              else
+                export CC=arm-linux-gnueabihf-gcc
+              fi
+              ;;
             mips)          export CC=mips-linux-gnu-gcc ;;
             mipsel)        if command -v mipsel-linux-musl-gcc >/dev/null 2>&1; then export CC=mipsel-linux-musl-gcc; else export CC=mipsel-linux-gnu-gcc; fi ;;
             mipsel-muslsf) export CC=mipsel-linux-muslsf-gcc ;;
             mips64)        export CC=mips64-linux-gnuabi64-gcc ;;
             mips64el)      export CC=mips64el-linux-gnuabi64-gcc ;;
-            riscv64)       export CC=riscv64-linux-gnu-gcc ;;
+            riscv64)
+              if command -v riscv64-linux-musl-gcc >/dev/null 2>&1; then
+                export CC=riscv64-linux-musl-gcc
+              else
+                export CC=riscv64-linux-gnu-gcc
+              fi
+              ;;
           esac
 
           export CXX=${CC/gcc/g++}
