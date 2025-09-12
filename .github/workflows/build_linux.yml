@@ -95,14 +95,19 @@ jobs:
               fi
               ;;
             mipsel-muslsf)
+              musl_available=false
               if [ ! -d mipsel-linux-muslsf-cross ]; then
                 echo "Downloading mipsel-linux-muslsf-cross toolchain..."
                 if wget -q https://musl.cc/mipsel-linux-muslsf-cross.tgz -O mipsel-linux-muslsf-cross.tgz; then
                   echo "Extracting mipsel-linux-muslsf-cross toolchain..."
-                  tar -xzf mipsel-linux-muslsf-cross.tgz && musl_available=true
-                  echo "Toolchain extracted successfully"
+                  if tar -xzf mipsel-linux-muslsf-cross.tgz; then
+                    musl_available=true
+                    echo "Toolchain extracted successfully"
+                  else
+                    echo "ERROR: Failed to extract toolchain"
+                  fi
                 else
-                  echo "WARN: mipsel-muslsf musl download failed, will use glibc cross-compiler"
+                  echo "ERROR: mipsel-muslsf musl download failed"
                 fi
               else
                 musl_available=true
@@ -111,6 +116,13 @@ jobs:
               if [ "$musl_available" = "true" ] && [ -d mipsel-linux-muslsf-cross/bin ]; then
                 echo "/tmp/mipsel-linux-muslsf-cross/bin" >> $GITHUB_PATH
                 echo "MUSL_AVAILABLE=true" >> $GITHUB_ENV
+                echo "Added mipsel-linux-muslsf-cross/bin to PATH"
+                ls -la mipsel-linux-muslsf-cross/bin/ | head -5
+              else
+                echo "ERROR: mipsel-linux-muslsf-cross toolchain setup failed"
+                echo "musl_available=$musl_available"
+                echo "Directory check: $(ls -ld mipsel-linux-muslsf-cross 2>/dev/null || echo 'Not found')"
+                exit 1
               fi
               ;;
             riscv64)
@@ -219,10 +231,24 @@ jobs:
           export AR=${CC/gcc/ar}
           export RANLIB=${CC/gcc/ranlib}
 
-          if [ "${{ matrix.arch }}" = "mipsel-muslsf" ]; then
-            export CFLAGS="-march=mips32r2 -mtune=mips32r2 -msoft-float"
-            export LDFLAGS="-msoft-float"
-          fi
+          # 软浮点平台的特殊编译标志
+          case "${{ matrix.arch }}" in
+            mipsel-muslsf)
+              export CFLAGS="-march=mips32r2 -mtune=mips32r2 -msoft-float"
+              export LDFLAGS="-msoft-float"
+              echo "Applied soft-float flags for mipsel-muslsf"
+              ;;
+            armv7-softfp)
+              export CFLAGS="-march=armv7-a -mfloat-abi=soft"
+              export LDFLAGS="-mfloat-abi=soft"
+              echo "Applied soft-float flags for armv7-softfp" 
+              ;;
+            armv7-hardfp)
+              export CFLAGS="-march=armv7-a -mfloat-abi=hard -mfpu=vfpv3-d16"
+              export LDFLAGS="-mfloat-abi=hard"
+              echo "Applied hard-float flags for armv7-hardfp"
+              ;;
+          esac
 
           # 只有在支持静态链接的情况下才添加-static参数
           if [ "$STATIC_LINKING" = "true" ]; then
@@ -256,10 +282,20 @@ jobs:
           # 根据是否支持静态链接来构建
           if [ "${STATIC_LINKING:-false}" = "true" ]; then
             echo "Building with static linking..."
-            make -C src -f "${{ matrix.makefile }}" install CC="$CC" CLI_LDFLAGS="-static $CLI_LDFLAGS" GNB_ES_LDFLAGS="-static $GNB_ES_LDFLAGS"
+            make -C src -f "${{ matrix.makefile }}" install \
+              CC="$CC" \
+              CFLAGS="$CFLAGS" \
+              LDFLAGS="$LDFLAGS" \
+              CLI_LDFLAGS="-static $CLI_LDFLAGS" \
+              GNB_ES_LDFLAGS="-static $GNB_ES_LDFLAGS"
           else
             echo "Building with dynamic linking..."
-            make -C src -f "${{ matrix.makefile }}" install CC="$CC" CLI_LDFLAGS="$CLI_LDFLAGS" GNB_ES_LDFLAGS="$GNB_ES_LDFLAGS"
+            make -C src -f "${{ matrix.makefile }}" install \
+              CC="$CC" \
+              CFLAGS="$CFLAGS" \
+              LDFLAGS="$LDFLAGS" \
+              CLI_LDFLAGS="$CLI_LDFLAGS" \
+              GNB_ES_LDFLAGS="$GNB_ES_LDFLAGS"
           fi
           
           if [ -d src/bin ]; then mv src/bin/* "$OUT_DIR/"; elif [ -d bin ]; then mv bin/* "$OUT_DIR/"; fi
