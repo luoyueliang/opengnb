@@ -113,6 +113,26 @@ jobs:
           if [ -d /tmp/musl-cross-arm-linux-musleabihf/bin ]; then
             echo "/tmp/musl-cross-arm-linux-musleabihf/bin" >> $GITHUB_PATH
           fi
+        - name: Setup musl cross toolchain (unified)
+          run: |
+            set -e
+            cd /tmp
+            case "${{ matrix.arch }}" in
+              mipsel) pkg="mipsel-linux-musl" ;;
+              mipsel-muslsf) pkg="mipsel-linux-muslsf" ;;
+              riscv64) pkg="riscv64-linux-musl" ;;
+              armv7-softfp|armv7-hardfp) pkg="arm-linux-musleabihf" ;;
+              *) pkg="" ;;
+            esac
+            if [ -n "$pkg" ]; then
+              if [ ! -d "/tmp/musl-cross-$pkg" ]; then
+                wget -q "https://musl.cc/$pkg-cross.tgz" -O "$pkg-cross.tgz"
+                tar -xzf "$pkg-cross.tgz"
+              fi
+              if [ -d "/tmp/musl-cross-$pkg/bin" ]; then
+                echo "/tmp/musl-cross-$pkg/bin" >> $GITHUB_PATH
+              fi
+            fi
       
       
           
