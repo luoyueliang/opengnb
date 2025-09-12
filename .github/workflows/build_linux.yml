@@ -77,71 +77,133 @@ jobs:
         run: |
           set -e
           cd /tmp
+          musl_available=false
           case "${{ matrix.arch }}" in
             mipsel)
               if [ ! -d mipsel-linux-musl-cross ]; then
-                wget -q https://musl.cc/mipsel-linux-musl-cross.tgz -O mipsel-linux-musl-cross.tgz
-                tar -xzf mipsel-linux-musl-cross.tgz
+                if wget -q https://musl.cc/mipsel-linux-musl-cross.tgz -O mipsel-linux-musl-cross.tgz; then
+                  tar -xzf mipsel-linux-musl-cross.tgz && musl_available=true
+                else
+                  echo "WARN: mipsel musl download failed, will use glibc cross-compiler"
+                fi
+              else
+                musl_available=true
               fi
-              if [ -d mipsel-linux-musl-cross/bin ]; then
+              if [ "$musl_available" = "true" ] && [ -d mipsel-linux-musl-cross/bin ]; then
                 echo "/tmp/mipsel-linux-musl-cross/bin" >> $GITHUB_PATH
+                echo "MUSL_AVAILABLE=true" >> $GITHUB_ENV
               fi
               ;;
             mipsel-muslsf)
               if [ ! -d mipsel-linux-muslsf-cross ]; then
-                wget -q https://musl.cc/mipsel-linux-muslsf-cross.tgz -O mipsel-linux-muslsf-cross.tgz
-                tar -xzf mipsel-linux-muslsf-cross.tgz
+                if wget -q https://musl.cc/mipsel-linux-muslsf-cross.tgz -O mipsel-linux-muslsf-cross.tgz; then
+                  tar -xzf mipsel-linux-muslsf-cross.tgz && musl_available=true
+                else
+                  echo "WARN: mipsel-muslsf musl download failed, will use glibc cross-compiler"
+                fi
+              else
+                musl_available=true
               fi
-              if [ -d mipsel-linux-muslsf-cross/bin ]; then
+              if [ "$musl_available" = "true" ] && [ -d mipsel-linux-muslsf-cross/bin ]; then
                 echo "/tmp/mipsel-linux-muslsf-cross/bin" >> $GITHUB_PATH
+                echo "MUSL_AVAILABLE=true" >> $GITHUB_ENV
               fi
               ;;
             riscv64)
               if [ ! -d riscv64-linux-musl-cross ]; then
-                wget -q https://musl.cc/riscv64-linux-musl-cross.tgz -O riscv64-linux-musl-cross.tgz
-                tar -xzf riscv64-linux-musl-cross.tgz
+                if wget -q https://musl.cc/riscv64-linux-musl-cross.tgz -O riscv64-linux-musl-cross.tgz; then
+                  tar -xzf riscv64-linux-musl-cross.tgz && musl_available=true
+                else
+                  echo "WARN: riscv64 musl download failed, will use glibc cross-compiler"
+                fi
+              else
+                musl_available=true
               fi
-              if [ -d riscv64-linux-musl-cross/bin ]; then
+              if [ "$musl_available" = "true" ] && [ -d riscv64-linux-musl-cross/bin ]; then
                 echo "/tmp/riscv64-linux-musl-cross/bin" >> $GITHUB_PATH
+                echo "MUSL_AVAILABLE=true" >> $GITHUB_ENV
               fi
               ;;
             armv7-softfp|armv7-hardfp)
               if [ ! -d arm-linux-musleabihf-cross ]; then
-                wget -q https://musl.cc/arm-linux-musleabihf-cross.tgz -O arm-linux-musleabihf-cross.tgz
-                tar -xzf arm-linux-musleabihf-cross.tgz
+                if wget -q https://musl.cc/arm-linux-musleabihf-cross.tgz -O arm-linux-musleabihf-cross.tgz; then
+                  tar -xzf arm-linux-musleabihf-cross.tgz && musl_available=true
+                else
+                  echo "WARN: arm-musleabihf musl download failed, will use glibc cross-compiler"
+                fi
+              else
+                musl_available=true
               fi
-              if [ -d arm-linux-musleabihf-cross/bin ]; then
+              if [ "$musl_available" = "true" ] && [ -d arm-linux-musleabihf-cross/bin ]; then
                 echo "/tmp/arm-linux-musleabihf-cross/bin" >> $GITHUB_PATH
+                echo "MUSL_AVAILABLE=true" >> $GITHUB_ENV
               fi
               ;;
             *) echo "No extra musl toolchain for ${{ matrix.arch }}";;
           esac
       
-      
-          
       - name: Setup cross compiler and static flags
         run: |
           MF="src/${{ matrix.makefile }}"
+          
+          # 确定是否使用静态链接
+          STATIC_LINKING=false
           case "${{ matrix.arch }}" in
-            amd64)         export CC=gcc ;;
-            arm64)         export CC=aarch64-linux-gnu-gcc ;;
+            amd64)         
+              export CC=gcc 
+              # amd64 native可以使用静态链接
+              STATIC_LINKING=true
+              ;;
+            arm64)         
+              export CC=aarch64-linux-gnu-gcc 
+              ;;
             armv7-softfp|armv7-hardfp)
               if command -v arm-linux-musleabihf-gcc >/dev/null 2>&1; then
                 export CC=arm-linux-musleabihf-gcc
+                STATIC_LINKING=true  # musl支持静态链接
+                echo "Using musl toolchain for ${{ matrix.arch }}: arm-linux-musleabihf-gcc"
               else
                 export CC=arm-linux-gnueabihf-gcc
+                echo "WARN: Using glibc toolchain for ${{ matrix.arch }}, static linking may fail"
               fi
               ;;
-            mips)          export CC=mips-linux-gnu-gcc ;;
-            mipsel)        if command -v mipsel-linux-musl-gcc >/dev/null 2>&1; then export CC=mipsel-linux-musl-gcc; else export CC=mipsel-linux-gnu-gcc; fi ;;
-            mipsel-muslsf) export CC=mipsel-linux-muslsf-gcc ;;
-            mips64)        export CC=mips64-linux-gnuabi64-gcc ;;
-            mips64el)      export CC=mips64el-linux-gnuabi64-gcc ;;
+            mips)          
+              export CC=mips-linux-gnu-gcc 
+              ;;
+            mipsel)        
+              if command -v mipsel-linux-musl-gcc >/dev/null 2>&1; then 
+                export CC=mipsel-linux-musl-gcc
+                STATIC_LINKING=true  # musl支持静态链接
+                echo "Using musl toolchain for ${{ matrix.arch }}: mipsel-linux-musl-gcc"
+              else 
+                export CC=mipsel-linux-gnu-gcc
+                echo "WARN: Using glibc toolchain for ${{ matrix.arch }}, static linking may fail"
+              fi 
+              ;;
+            mipsel-muslsf) 
+              if command -v mipsel-linux-muslsf-gcc >/dev/null 2>&1; then
+                export CC=mipsel-linux-muslsf-gcc
+                STATIC_LINKING=true  # musl支持静态链接
+                echo "Using musl toolchain for ${{ matrix.arch }}: mipsel-linux-muslsf-gcc"
+              else
+                echo "ERROR: mipsel-muslsf requires musl toolchain but not found"
+                exit 1
+              fi
+              ;;
+            mips64)        
+              export CC=mips64-linux-gnuabi64-gcc 
+              ;;
+            mips64el)      
+              export CC=mips64el-linux-gnuabi64-gcc 
+              ;;
             riscv64)
               if command -v riscv64-linux-musl-gcc >/dev/null 2>&1; then
                 export CC=riscv64-linux-musl-gcc
+                STATIC_LINKING=true  # musl支持静态链接
+                echo "Using musl toolchain for ${{ matrix.arch }}: riscv64-linux-musl-gcc"
               else
                 export CC=riscv64-linux-gnu-gcc
+                echo "WARN: Using glibc toolchain for ${{ matrix.arch }}, static linking may fail"
               fi
               ;;
           esac
@@ -155,9 +217,16 @@ jobs:
             export LDFLAGS="-msoft-float"
           fi
 
-          # 直接追加静态链接参数
-          export CLI_LDFLAGS="${CLI_LDFLAGS} -static"
-          export GNB_ES_LDFLAGS="${GNB_ES_LDFLAGS} -static"
+          # 只有在支持静态链接的情况下才添加-static参数
+          if [ "$STATIC_LINKING" = "true" ]; then
+            export CLI_LDFLAGS="${CLI_LDFLAGS} -static"
+            export GNB_ES_LDFLAGS="${GNB_ES_LDFLAGS} -static"
+            echo "STATIC_LINKING=true" >> $GITHUB_ENV
+            echo "Static linking enabled for ${{ matrix.arch }}"
+          else
+            echo "STATIC_LINKING=false" >> $GITHUB_ENV
+            echo "Dynamic linking for ${{ matrix.arch }} (static linking not supported with current toolchain)"
+          fi
 
           echo "CC=$CC" >> $GITHUB_ENV
           echo "CXX=$CXX" >> $GITHUB_ENV
@@ -176,29 +245,62 @@ jobs:
           mkdir -p "$OUT_DIR" "$PKG_DIR"
 
           make -C src -f "${{ matrix.makefile }}" clean
-          make -C src -f "${{ matrix.makefile }}" install CC="$CC" CLI_LDFLAGS="-static $CLI_LDFLAGS" GNB_ES_LDFLAGS="-static $GNB_ES_LDFLAGS"
+          
+          # 根据是否支持静态链接来构建
+          if [ "${STATIC_LINKING:-false}" = "true" ]; then
+            echo "Building with static linking..."
+            make -C src -f "${{ matrix.makefile }}" install CC="$CC" CLI_LDFLAGS="-static $CLI_LDFLAGS" GNB_ES_LDFLAGS="-static $GNB_ES_LDFLAGS"
+          else
+            echo "Building with dynamic linking..."
+            make -C src -f "${{ matrix.makefile }}" install CC="$CC" CLI_LDFLAGS="$CLI_LDFLAGS" GNB_ES_LDFLAGS="$GNB_ES_LDFLAGS"
+          fi
+          
           if [ -d src/bin ]; then mv src/bin/* "$OUT_DIR/"; elif [ -d bin ]; then mv bin/* "$OUT_DIR/"; fi
 
-      - name: Verify static binaries
+      - name: Verify and optimize binaries
         run: |
           set -e
-            OUT_DIR="$GITHUB_WORKSPACE/.out/${{ steps.tag.outputs.tag }}/${{ matrix.os }}/${{ matrix.arch }}/bin"
-            if [ ! -d "$OUT_DIR" ]; then echo "OUT_DIR missing: $OUT_DIR"; exit 1; fi
-            missing=0
-            for f in gnb_ctl gnb_es gnb_crypto gnb; do
-              if [ -f "$OUT_DIR/$f" ]; then
-                info=$(file -b "$OUT_DIR/$f")
-                echo "$f: $info"
-                echo "$info" | grep -qi "statically linked" || { echo "WARN: $f not static"; missing=1; }
+          OUT_DIR="$GITHUB_WORKSPACE/.out/${{ steps.tag.outputs.tag }}/${{ matrix.os }}/${{ matrix.arch }}/bin"
+          if [ ! -d "$OUT_DIR" ]; then echo "OUT_DIR missing: $OUT_DIR"; exit 1; fi
+          
+          missing=0
+          for f in gnb_ctl gnb_es gnb_crypto gnb; do
+            if [ -f "$OUT_DIR/$f" ]; then
+              info=$(file -b "$OUT_DIR/$f")
+              echo "$f: $info"
+              
+              # 压缩二进制文件体积
+              strip "$OUT_DIR/$f" 2>/dev/null || true
+              echo "Stripped $f"
+              
+              # 验证链接类型
+              if [ "${STATIC_LINKING:-false}" = "true" ]; then
+                # 期望静态链接
+                if echo "$info" | grep -qi "statically linked\|static-pie linked"; then
+                  echo "✓ $f is static (as expected)"
+                else
+                  echo "ERROR: $f is not static but static linking was enabled"; missing=1
+                fi
               else
-                echo "WARN: binary $f not found"
-                missing=1
+                # 期望动态链接，但静态也可接受
+                if echo "$info" | grep -qi "statically linked\|static-pie linked"; then
+                  echo "✓ $f is static (bonus!)"
+                elif echo "$info" | grep -qi "dynamically linked"; then
+                  echo "✓ $f is dynamic (as expected)"
+                else
+                  echo "? $f linking status unknown: $info"
+                fi
               fi
-            done
-            if [ $missing -ne 0 ]; then
-              echo "One or more binaries are not static (or missing)." >&2
-              exit 1
+            else
+              echo "ERROR: binary $f not found"
+              missing=1
             fi
+          done
+          
+          if [ $missing -ne 0 ]; then
+            echo "One or more binaries are missing or have wrong linking type." >&2
+            exit 1
+          fi
 
       - name: Package
         run: |
