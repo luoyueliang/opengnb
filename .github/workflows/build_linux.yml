@@ -157,22 +157,6 @@ jobs:
       with:
         name: gnb-${{ matrix.os }}-${{ matrix.arch }}
         path: .pkg/${{ steps.tag.outputs.tag }}/*
-            if [ ! -d "$OUT_DIR" ]; then echo "OUT_DIR missing: $OUT_DIR"; exit 1; fi
-            missing=0
-            for f in gnb_ctl gnb_es gnb_crypto gnb; do
-              if [ -f "$OUT_DIR/$f" ]; then
-                info=$(file -b "$OUT_DIR/$f")
-                echo "$f: $info"
-                echo "$info" | grep -qi "statically linked" || { echo "WARN: $f not static"; missing=1; }
-              else
-                echo "WARN: binary $f not found"
-                missing=1
-              fi
-            done
-            if [ $missing -ne 0 ]; then
-              echo "One or more binaries are not static (or missing)." >&2
-              exit 1
-            fi
 
     - name: Package
       run: |
