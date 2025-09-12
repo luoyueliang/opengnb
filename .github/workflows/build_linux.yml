@@ -98,16 +98,31 @@ jobs:
               musl_available=false
               if [ ! -d mipsel-linux-muslsf-cross ]; then
                 echo "Downloading mipsel-linux-muslsf-cross toolchain..."
-                if wget -q https://musl.cc/mipsel-linux-muslsf-cross.tgz -O mipsel-linux-muslsf-cross.tgz; then
-                  echo "Extracting mipsel-linux-muslsf-cross toolchain..."
-                  if tar -xzf mipsel-linux-muslsf-cross.tgz; then
-                    musl_available=true
-                    echo "Toolchain extracted successfully"
+                # 尝试3次下载
+                for attempt in 1 2 3; do
+                  echo "Download attempt $attempt/3..."
+                  if wget --timeout=30 --tries=2 -q https://musl.cc/mipsel-linux-muslsf-cross.tgz -O mipsel-linux-muslsf-cross.tgz; then
+                    echo "Download successful, extracting..."
+                    if tar -xzf mipsel-linux-muslsf-cross.tgz; then
+                      musl_available=true
+                      echo "Toolchain extracted successfully"
+                      break
+                    else
+                      echo "ERROR: Failed to extract toolchain"
+                      rm -f mipsel-linux-muslsf-cross.tgz
+                    fi
                   else
-                    echo "ERROR: Failed to extract toolchain"
+                    echo "Download attempt $attempt failed"
+                    rm -f mipsel-linux-muslsf-cross.tgz
+                    if [ $attempt -lt 3 ]; then
+                      echo "Retrying in 5 seconds..."
+                      sleep 5
+                    fi
                   fi
-                else
-                  echo "ERROR: mipsel-muslsf musl download failed"
+                done
+                
+                if [ "$musl_available" = "false" ]; then
+                  echo "ERROR: All download attempts failed"
                 fi
               else
                 musl_available=true
@@ -282,20 +297,41 @@ jobs:
           # 根据是否支持静态链接来构建
           if [ "${STATIC_LINKING:-false}" = "true" ]; then
             echo "Building with static linking..."
-            make -C src -f "${{ matrix.makefile }}" install \
-              CC="$CC" \
-              CFLAGS="$CFLAGS" \
-              LDFLAGS="$LDFLAGS" \
-              CLI_LDFLAGS="-static $CLI_LDFLAGS" \
-              GNB_ES_LDFLAGS="-static $GNB_ES_LDFLAGS"
+            # 只在有特殊编译标志的情况下才传递CFLAGS和LDFLAGS
+            case "${{ matrix.arch }}" in
+              mipsel-muslsf|armv7-softfp|armv7-hardfp)
+                make -C src -f "${{ matrix.makefile }}" install \
+                  CC="$CC" \
+                  CFLAGS="\$(CFLAGS) $CFLAGS" \
+                  LDFLAGS="\$(LDFLAGS) $LDFLAGS" \
+                  CLI_LDFLAGS="-static $CLI_LDFLAGS" \
+                  GNB_ES_LDFLAGS="-static $GNB_ES_LDFLAGS"
+                ;;
+              *)
+                make -C src -f "${{ matrix.makefile }}" install \
+                  CC="$CC" \
+                  CLI_LDFLAGS="-static $CLI_LDFLAGS" \
+                  GNB_ES_LDFLAGS="-static $GNB_ES_LDFLAGS"
+                ;;
+            esac
           else
             echo "Building with dynamic linking..."
-            make -C src -f "${{ matrix.makefile }}" install \
-              CC="$CC" \
-              CFLAGS="$CFLAGS" \
-              LDFLAGS="$LDFLAGS" \
-              CLI_LDFLAGS="$CLI_LDFLAGS" \
-              GNB_ES_LDFLAGS="$GNB_ES_LDFLAGS"
+            case "${{ matrix.arch }}" in
+              mipsel-muslsf|armv7-softfp|armv7-hardfp)
+                make -C src -f "${{ matrix.makefile }}" install \
+                  CC="$CC" \
+                  CFLAGS="\$(CFLAGS) $CFLAGS" \
+                  LDFLAGS="\$(LDFLAGS) $LDFLAGS" \
+                  CLI_LDFLAGS="$CLI_LDFLAGS" \
+                  GNB_ES_LDFLAGS="$GNB_ES_LDFLAGS"
+                ;;
+              *)
+                make -C src -f "${{ matrix.makefile }}" install \
+                  CC="$CC" \
+                  CLI_LDFLAGS="$CLI_LDFLAGS" \
+                  GNB_ES_LDFLAGS="$GNB_ES_LDFLAGS"
+                ;;
+            esac
           fi
           
           if [ -d src/bin ]; then mv src/bin/* "$OUT_DIR/"; elif [ -d bin ]; then mv bin/* "$OUT_DIR/"; fi
