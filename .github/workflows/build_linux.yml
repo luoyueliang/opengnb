@@ -125,23 +125,19 @@ jobs:
             export LDFLAGS="-msoft-float"
           fi
 
+          # 直接追加静态链接参数
+          export CLI_LDFLAGS="${CLI_LDFLAGS} -static"
+          export GNB_ES_LDFLAGS="${GNB_ES_LDFLAGS} -static"
+
           echo "CC=$CC" >> $GITHUB_ENV
           echo "CXX=$CXX" >> $GITHUB_ENV
           echo "AR=$AR" >> $GITHUB_ENV
           echo "RANLIB=$RANLIB" >> $GITHUB_ENV
           echo "CFLAGS=${CFLAGS:-}" >> $GITHUB_ENV
           echo "LDFLAGS=${LDFLAGS:-}" >> $GITHUB_ENV
+          echo "CLI_LDFLAGS=$CLI_LDFLAGS" >> $GITHUB_ENV
+          echo "GNB_ES_LDFLAGS=$GNB_ES_LDFLAGS" >> $GITHUB_ENV
 
-      - name: Ensure static flags (idempotent patch)
-        run: |
-          MF="src/${{ matrix.makefile }}"
-          [ -f "$MF" ] || { echo "No makefile $MF"; exit 0; }
-          # 针对四个目标行，若尚未包含 -static 则追加
-          for sym in GNB_CTL GNB_ES GNB_CRYPTO GNB_CLI; do
-            # 仅当匹配行且未包含 -static 时插入
-            sed -i "/\${CC} -o \${${sym}} /{/ -static /! s|\(${CC} -o \${${sym}}[^\n]*\)|\1 -static|}" "$MF" || true
-          done
-          echo "After static patch preview:"; grep -E '\${CC} -o \${GNB_CTL}|\${CC} -o \${GNB_ES}|\${CC} -o \${GNB_CRYPTO}|\${CC} -o \${GNB_CLI}' -n "$MF" || true
 
       - name: Build
         run: |
