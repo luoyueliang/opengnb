@@ -62,7 +62,9 @@ jobs:
           sudo apt-get install -y gcc-aarch64-linux-gnu gcc-arm-linux-gnueabihf || true
           sudo apt-get install -y gcc-mips-linux-gnu gcc-mipsel-linux-gnu gcc-mips64-linux-gnuabi64 gcc-mips64el-linux-gnuabi64 || true
           sudo apt-get install -y gcc-riscv64-linux-gnu || true
- 
+
+      
+
       - name: Cache OpenWrt musl toolchains
         if: matrix.os == 'openwrt'
         uses: actions/cache@v3
@@ -77,67 +79,43 @@ jobs:
           cd /tmp
           case "${{ matrix.arch }}" in
             mipsel)
-              if [ ! -d musl-cross-mipsel-linux-musl ] && [ ! -d musl-cross-${{ matrix.arch }} ]; then
+              if [ ! -d mipsel-linux-musl-cross ]; then
                 wget -q https://musl.cc/mipsel-linux-musl-cross.tgz -O mipsel-linux-musl-cross.tgz
                 tar -xzf mipsel-linux-musl-cross.tgz
-                mv mipsel-linux-musl-cross musl-cross-${{ matrix.arch }}
+              fi
+              if [ -d mipsel-linux-musl-cross/bin ]; then
+                echo "/tmp/mipsel-linux-musl-cross/bin" >> $GITHUB_PATH
               fi
               ;;
             mipsel-muslsf)
-              if [ ! -d musl-cross-mipsel-linux-muslsf ] && [ ! -d musl-cross-${{ matrix.arch }} ]; then
+              if [ ! -d mipsel-linux-muslsf-cross ]; then
                 wget -q https://musl.cc/mipsel-linux-muslsf-cross.tgz -O mipsel-linux-muslsf-cross.tgz
                 tar -xzf mipsel-linux-muslsf-cross.tgz
-                mv mipsel-linux-muslsf-cross musl-cross-${{ matrix.arch }}
+              fi
+              if [ -d mipsel-linux-muslsf-cross/bin ]; then
+                echo "/tmp/mipsel-linux-muslsf-cross/bin" >> $GITHUB_PATH
               fi
               ;;
             riscv64)
-              if [ ! -d musl-cross-riscv64-linux-musl ]; then
+              if [ ! -d riscv64-linux-musl-cross ]; then
                 wget -q https://musl.cc/riscv64-linux-musl-cross.tgz -O riscv64-linux-musl-cross.tgz
                 tar -xzf riscv64-linux-musl-cross.tgz
               fi
+              if [ -d riscv64-linux-musl-cross/bin ]; then
+                echo "/tmp/riscv64-linux-musl-cross/bin" >> $GITHUB_PATH
+              fi
               ;;
             armv7-softfp|armv7-hardfp)
-              if [ ! -d musl-cross-arm-linux-musleabihf ]; then
+              if [ ! -d arm-linux-musleabihf-cross ]; then
                 wget -q https://musl.cc/arm-linux-musleabihf-cross.tgz -O arm-linux-musleabihf-cross.tgz
                 tar -xzf arm-linux-musleabihf-cross.tgz
+              fi
+              if [ -d arm-linux-musleabihf-cross/bin ]; then
+                echo "/tmp/arm-linux-musleabihf-cross/bin" >> $GITHUB_PATH
               fi
               ;;
             *) echo "No extra musl toolchain for ${{ matrix.arch }}";;
           esac
-          # 兼容所有 musl 交叉工具链
-          if [ -d /tmp/musl-cross-${{ matrix.arch }}/bin ]; then
-            echo "/tmp/musl-cross-${{ matrix.arch }}/bin" >> $GITHUB_PATH
-          fi
-          if [ -d /tmp/musl-cross-arm-linux-musleabihf/bin ]; then
-            echo "/tmp/musl-cross-arm-linux-musleabihf/bin" >> $GITHUB_PATH
-          fi
-
-      - name: Setup musl cross toolchain (auto)
-        run: |
-          set -e
-          cd /tmp
-          declare -A musl_map=(
-            [riscv64]=riscv64-linux-musl
-            [armv7-softfp]=arm-linux-musleabihf
-            [armv7-hardfp]=arm-linux-musleabihf
-            [mipsel]=mipsel-linux-musl
-            [mipsel-muslsf]=mipsel-linux-muslsf
-            [amd64]=x86_64-linux-musl
-            [x86_64]=x86_64-linux-musl
-            [arm64]=aarch64-linux-musl
-            [mips]=mips-linux-musl
-            [mips64]=mips64-linux-musl
-            [mips64el]=mips64el-linux-musl
-          )
-          arch="${{ matrix.arch }}"
-          pkg="${musl_map[$arch]}"
-          if [ -n "$pkg" ]; then
-            if [ ! -d "/tmp/${pkg}-cross" ]; then
-              wget -q "https://musl.cc/${pkg}-cross.tgz" -O "/tmp/${pkg}-cross.tgz"
-              tar -xzf "/tmp/${pkg}-cross.tgz" -C /tmp/
-            fi
-            echo "/tmp/${pkg}-cross/bin" >> $GITHUB_PATH
-          fi
       
       
           
