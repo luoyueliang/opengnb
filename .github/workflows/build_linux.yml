@@ -16,190 +16,147 @@ concurrency:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          # Linux
-          - { os: linux, platform: linux, arch: amd64,        makefile: Makefile.linux }
-          - { os: linux, platform: linux, arch: arm64,        makefile: Makefile.linux }
-          - { os: linux, platform: linux, arch: armv7-softfp, makefile: Makefile.linux }
-          - { os: linux, platform: linux, arch: armv7-hardfp, makefile: Makefile.linux }
-          - { os: linux, platform: linux, arch: mips,         makefile: Makefile.linux }
-          - { os: linux, platform: linux, arch: mipsel,       makefile: Makefile.linux }
-          - { os: linux, platform: linux, arch: mips64,       makefile: Makefile.linux }
-          - { os: linux, platform: linux, arch: mips64el,     makefile: Makefile.linux }
-          - { os: linux, platform: linux, arch: riscv64,      makefile: Makefile.linux }
-          # OpenWrt
-          - { os: openwrt, platform: linux, arch: amd64,         makefile: Makefile.openwrt }
-          - { os: openwrt, platform: linux, arch: arm64,         makefile: Makefile.openwrt }
-          - { os: openwrt, platform: linux, arch: armv7-softfp,  makefile: Makefile.openwrt }
-          - { os: openwrt, platform: linux, arch: armv7-hardfp,  makefile: Makefile.openwrt }
-          - { os: openwrt, platform: linux, arch: mips,          makefile: Makefile.openwrt }
-          - { os: openwrt, platform: linux, arch: mipsel,        makefile: Makefile.openwrt }
-          - { os: openwrt, platform: linux, arch: mipsel-muslsf, makefile: Makefile.openwrt }
-          - { os: openwrt, platform: linux, arch: mips64,        makefile: Makefile.openwrt }
-          - { os: openwrt, platform: linux, arch: mips64el,      makefile: Makefile.openwrt }
-          - { os: openwrt, platform: linux, arch: riscv64,       makefile: Makefile.openwrt }
-
     steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.ref }}
-          fetch-depth: 0
+    - name: Checkout source
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ github.ref }}
+        fetch-depth: 0
 
-      - name: Extract tag
-        id: tag
-        run: echo "tag=${GITHUB_REF##*/}" >> "$GITHUB_OUTPUT"
+    - name: Extract tag
+      id: tag
+      run: echo "tag=${GITHUB_REF##*/}" >> "$GITHUB_OUTPUT"
 
-      - name: Install dependencies
-        if: matrix.os != 'darwin'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential pkg-config wget curl git ca-certificates xz-utils tar flex bison autoconf automake libtool texinfo gawk cmake ninja-build file
-          sudo apt-get install -y gcc-aarch64-linux-gnu gcc-arm-linux-gnueabihf || true
-          sudo apt-get install -y gcc-mips-linux-gnu gcc-mipsel-linux-gnu gcc-mips64-linux-gnuabi64 gcc-mips64el-linux-gnuabi64 || true
-          sudo apt-get install -y gcc-riscv64-linux-gnu || true
+    - name: Install dependencies
+      if: matrix.os != 'darwin'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential pkg-config wget curl git ca-certificates xz-utils tar flex bison autoconf automake libtool texinfo gawk cmake ninja-build file
+        sudo apt-get install -y gcc-aarch64-linux-gnu gcc-arm-linux-gnueabihf || true
+        sudo apt-get install -y gcc-mips-linux-gnu gcc-mipsel-linux-gnu gcc-mips64-linux-gnuabi64 gcc-mips64el-linux-gnuabi64 || true
+        sudo apt-get install -y gcc-riscv64-linux-gnu || true
 
-      
+    - name: Cache OpenWrt musl toolchains
+      if: matrix.os == 'openwrt'
+      uses: actions/cache@v3
+      with:
+        path: /tmp/musl-cross-${{ matrix.arch }}
+        key: openwrt-musl-${{ matrix.arch }}-${{ runner.os }}-v1
 
-      - name: Cache OpenWrt musl toolchains
-        if: matrix.os == 'openwrt'
-        uses: actions/cache@v3
-        with:
-          path: /tmp/musl-cross-${{ matrix.arch }}
-          key: openwrt-musl-${{ matrix.arch }}-${{ runner.os }}-v1
-
-      - name: Setup musl / special OpenWrt toolchain
-        if: matrix.os == 'openwrt' || matrix.arch == 'armv7-softfp' || matrix.arch == 'armv7-hardfp'
-        run: |
-          set -e
-          cd /tmp
-          case "${{ matrix.arch }}" in
-            mipsel)
-              if [ ! -d musl-cross-mipsel-linux-musl ] && [ ! -d musl-cross-${{ matrix.arch }} ]; then
-                wget -q https://musl.cc/mipsel-linux-musl-cross.tgz -O mipsel-linux-musl-cross.tgz
-                tar -xzf mipsel-linux-musl-cross.tgz
-                mv mipsel-linux-musl-cross musl-cross-${{ matrix.arch }}
-              fi
-              ;;
-            mipsel-muslsf)
-              if [ ! -d musl-cross-mipsel-linux-muslsf ] && [ ! -d musl-cross-${{ matrix.arch }} ]; then
-                wget -q https://musl.cc/mipsel-linux-muslsf-cross.tgz -O mipsel-linux-muslsf-cross.tgz
-                tar -xzf mipsel-linux-muslsf-cross.tgz
-                mv mipsel-linux-muslsf-cross musl-cross-${{ matrix.arch }}
-              fi
-              ;;
-            riscv64)
-              if [ ! -d musl-cross-riscv64-linux-musl ]; then
-                wget -q https://musl.cc/riscv64-linux-musl-cross.tgz -O riscv64-linux-musl-cross.tgz
-                tar -xzf riscv64-linux-musl-cross.tgz
-              fi
-              ;;
-            armv7-softfp|armv7-hardfp)
-              if [ ! -d musl-cross-arm-linux-musleabihf ]; then
-                wget -q https://musl.cc/arm-linux-musleabihf-cross.tgz -O arm-linux-musleabihf-cross.tgz
-                tar -xzf arm-linux-musleabihf-cross.tgz
-              fi
-              ;;
-            *) echo "No extra musl toolchain for ${{ matrix.arch }}";;
-          esac
-          # 兼容所有 musl 交叉工具链
-          if [ -d /tmp/musl-cross-${{ matrix.arch }}/bin ]; then
-            echo "/tmp/musl-cross-${{ matrix.arch }}/bin" >> $GITHUB_PATH
+    - name: Setup musl cross toolchain (unified)
+      run: |
+        set -e
+        cd /tmp
+        case "${{ matrix.arch }}" in
+          mipsel) pkg="mipsel-linux-musl" ;;
+          mipsel-muslsf) pkg="mipsel-linux-muslsf" ;;
+          riscv64) pkg="riscv64-linux-musl" ;;
+          armv7-softfp|armv7-hardfp) pkg="arm-linux-musleabihf" ;;
+          *) pkg="" ;;
+        esac
+        if [ -n "$pkg" ]; then
+          if [ ! -d "/tmp/musl-cross-$pkg" ]; then
+            wget -q "https://musl.cc/$pkg-cross.tgz" -O "$pkg-cross.tgz"
+            tar -xzf "$pkg-cross.tgz"
           fi
-          if [ -d /tmp/musl-cross-arm-linux-musleabihf/bin ]; then
-            echo "/tmp/musl-cross-arm-linux-musleabihf/bin" >> $GITHUB_PATH
+          if [ -d "/tmp/musl-cross-$pkg/bin" ]; then
+            echo "/tmp/musl-cross-$pkg/bin" >> $GITHUB_PATH
           fi
-        - name: Setup musl cross toolchain (unified)
-          run: |
-            set -e
-            cd /tmp
-            case "${{ matrix.arch }}" in
-              mipsel) pkg="mipsel-linux-musl" ;;
-              mipsel-muslsf) pkg="mipsel-linux-muslsf" ;;
-              riscv64) pkg="riscv64-linux-musl" ;;
-              armv7-softfp|armv7-hardfp) pkg="arm-linux-musleabihf" ;;
-              *) pkg="" ;;
-            esac
-            if [ -n "$pkg" ]; then
-              if [ ! -d "/tmp/musl-cross-$pkg" ]; then
-                wget -q "https://musl.cc/$pkg-cross.tgz" -O "$pkg-cross.tgz"
-                tar -xzf "$pkg-cross.tgz"
-              fi
-              if [ -d "/tmp/musl-cross-$pkg/bin" ]; then
-                echo "/tmp/musl-cross-$pkg/bin" >> $GITHUB_PATH
-              fi
+        fi
+
+    - name: Setup cross compiler and static flags
+      run: |
+        MF="src/${{ matrix.makefile }}"
+        case "${{ matrix.arch }}" in
+          amd64)         export CC=gcc ;;
+          arm64)         export CC=aarch64-linux-gnu-gcc ;;
+          armv7-softfp|armv7-hardfp)
+            if command -v arm-linux-musleabihf-gcc >/dev/null 2>&1; then
+              export CC=arm-linux-musleabihf-gcc
+            else
+              export CC=arm-linux-gnueabihf-gcc
             fi
-      
-      
-          
-      - name: Setup cross compiler and static flags
-        run: |
-          MF="src/${{ matrix.makefile }}"
-          case "${{ matrix.arch }}" in
-            amd64)         export CC=gcc ;;
-            arm64)         export CC=aarch64-linux-gnu-gcc ;;
-            armv7-softfp|armv7-hardfp)
-              if command -v arm-linux-musleabihf-gcc >/dev/null 2>&1; then
-                export CC=arm-linux-musleabihf-gcc
-              else
-                export CC=arm-linux-gnueabihf-gcc
-              fi
-              ;;
-            mips)          export CC=mips-linux-gnu-gcc ;;
-            mipsel)        if command -v mipsel-linux-musl-gcc >/dev/null 2>&1; then export CC=mipsel-linux-musl-gcc; else export CC=mipsel-linux-gnu-gcc; fi ;;
-            mipsel-muslsf) export CC=mipsel-linux-muslsf-gcc ;;
-            mips64)        export CC=mips64-linux-gnuabi64-gcc ;;
-            mips64el)      export CC=mips64el-linux-gnuabi64-gcc ;;
-            riscv64)
-              if command -v riscv64-linux-musl-gcc >/dev/null 2>&1; then
-                export CC=riscv64-linux-musl-gcc
-              else
-                export CC=riscv64-linux-gnu-gcc
-              fi
-              ;;
-          esac
+            ;;
+          mips)          export CC=mips-linux-gnu-gcc ;;
+          mipsel)        if command -v mipsel-linux-musl-gcc >/dev/null 2>&1; then export CC=mipsel-linux-musl-gcc; else export CC=mipsel-linux-gnu-gcc; fi ;;
+          mipsel-muslsf) export CC=mipsel-linux-muslsf-gcc ;;
+          mips64)        export CC=mips64-linux-gnuabi64-gcc ;;
+          mips64el)      export CC=mips64el-linux-gnuabi64-gcc ;;
+          riscv64)
+            if command -v riscv64-linux-musl-gcc >/dev/null 2>&1; then
+              export CC=riscv64-linux-musl-gcc
+            else
+              export CC=riscv64-linux-gnu-gcc
+            fi
+            ;;
+        esac
 
-          export CXX=${CC/gcc/g++}
-          export AR=${CC/gcc/ar}
-          export RANLIB=${CC/gcc/ranlib}
+        export CXX=${CC/gcc/g++}
+        export AR=${CC/gcc/ar}
+        export RANLIB=${CC/gcc/ranlib}
 
-          if [ "${{ matrix.arch }}" = "mipsel-muslsf" ]; then
-            export CFLAGS="-march=mips32r2 -mtune=mips32r2 -msoft-float"
-            export LDFLAGS="-msoft-float"
+        if [ "${{ matrix.arch }}" = "mipsel-muslsf" ]; then
+          export CFLAGS="-march=mips32r2 -mtune=mips32r2 -msoft-float"
+          export LDFLAGS="-msoft-float"
+        fi
+
+        # 直接追加静态链接参数
+        export CLI_LDFLAGS="${CLI_LDFLAGS} -static"
+        export GNB_ES_LDFLAGS="${GNB_ES_LDFLAGS} -static"
+
+        echo "CC=$CC" >> $GITHUB_ENV
+        echo "CXX=$CXX" >> $GITHUB_ENV
+        echo "AR=$AR" >> $GITHUB_ENV
+        echo "RANLIB=$RANLIB" >> $GITHUB_ENV
+        echo "CFLAGS=${CFLAGS:-}" >> $GITHUB_ENV
+        echo "LDFLAGS=${LDFLAGS:-}" >> $GITHUB_ENV
+        echo "CLI_LDFLAGS=$CLI_LDFLAGS" >> $GITHUB_ENV
+        echo "GNB_ES_LDFLAGS=$GNB_ES_LDFLAGS" >> $GITHUB_ENV
+
+    - name: Build
+      run: |
+        OUT_DIR="$GITHUB_WORKSPACE/.out/${{ steps.tag.outputs.tag }}/${{ matrix.os }}/${{ matrix.arch }}/bin"
+        PKG_DIR="$GITHUB_WORKSPACE/.pkg/${{ steps.tag.outputs.tag }}"
+        mkdir -p "$OUT_DIR" "$PKG_DIR"
+
+        make -C src -f "${{ matrix.makefile }}" clean
+        make -C src -f "${{ matrix.makefile }}" install CC="$CC" CLI_LDFLAGS="-static $CLI_LDFLAGS" GNB_ES_LDFLAGS="-static $GNB_ES_LDFLAGS"
+        if [ -d src/bin ]; then mv src/bin/* "$OUT_DIR/"; elif [ -d bin ]; then mv bin/* "$OUT_DIR/"; fi
+
+    - name: Verify static binaries
+      run: |
+        set -e
+        OUT_DIR="$GITHUB_WORKSPACE/.out/${{ steps.tag.outputs.tag }}/${{ matrix.os }}/${{ matrix.arch }}/bin"
+        if [ ! -d "$OUT_DIR" ]; then echo "OUT_DIR missing: $OUT_DIR"; exit 1; fi
+        missing=0
+        for f in gnb_ctl gnb_es gnb_crypto gnb; do
+          if [ -f "$OUT_DIR/$f" ]; then
+            info=$(file -b "$OUT_DIR/$f")
+            echo "$f: $info"
+            echo "$info" | grep -qi "statically linked" || { echo "WARN: $f not static"; missing=1; }
+          else
+            echo "WARN: binary $f not found"
+            missing=1
           fi
+        done
+        if [ $missing -ne 0 ]; then
+          echo "One or more binaries are not static (or missing)." >&2
+          exit 1
+        fi
 
-          # 直接追加静态链接参数
-          export CLI_LDFLAGS="${CLI_LDFLAGS} -static"
-          export GNB_ES_LDFLAGS="${GNB_ES_LDFLAGS} -static"
+    - name: Package
+      run: |
+        OUT_PARENT="$GITHUB_WORKSPACE/.out/${{ steps.tag.outputs.tag }}/${{ matrix.os }}/${{ matrix.arch }}"
+        PKG_DIR="$GITHUB_WORKSPACE/.pkg/${{ steps.tag.outputs.tag }}"
+        ARCHIVE="${PROJECT}_${{ matrix.os }}_${{ matrix.arch }}_${{ steps.tag.outputs.tag }}.tgz"
+        tar -czvf "$ARCHIVE" -C "$OUT_PARENT" bin
+        mv "$ARCHIVE" "$PKG_DIR/"
 
-          echo "CC=$CC" >> $GITHUB_ENV
-          echo "CXX=$CXX" >> $GITHUB_ENV
-          echo "AR=$AR" >> $GITHUB_ENV
-          echo "RANLIB=$RANLIB" >> $GITHUB_ENV
-          echo "CFLAGS=${CFLAGS:-}" >> $GITHUB_ENV
-          echo "LDFLAGS=${LDFLAGS:-}" >> $GITHUB_ENV
-          echo "CLI_LDFLAGS=$CLI_LDFLAGS" >> $GITHUB_ENV
-          echo "GNB_ES_LDFLAGS=$GNB_ES_LDFLAGS" >> $GITHUB_ENV
-
-
-      - name: Build
-        run: |
-          OUT_DIR="$GITHUB_WORKSPACE/.out/${{ steps.tag.outputs.tag }}/${{ matrix.os }}/${{ matrix.arch }}/bin"
-          PKG_DIR="$GITHUB_WORKSPACE/.pkg/${{ steps.tag.outputs.tag }}"
-          mkdir -p "$OUT_DIR" "$PKG_DIR"
-
-          make -C src -f "${{ matrix.makefile }}" clean
-          make -C src -f "${{ matrix.makefile }}" install CC="$CC" CLI_LDFLAGS="-static $CLI_LDFLAGS" GNB_ES_LDFLAGS="-static $GNB_ES_LDFLAGS"
-          if [ -d src/bin ]; then mv src/bin/* "$OUT_DIR/"; elif [ -d bin ]; then mv bin/* "$OUT_DIR/"; fi
-
-      - name: Verify static binaries
-        run: |
-          set -e
-            OUT_DIR="$GITHUB_WORKSPACE/.out/${{ steps.tag.outputs.tag }}/${{ matrix.os }}/${{ matrix.arch }}/bin"
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: gnb-${{ matrix.os }}-${{ matrix.arch }}
+        path: .pkg/${{ steps.tag.outputs.tag }}/*
             if [ ! -d "$OUT_DIR" ]; then echo "OUT_DIR missing: $OUT_DIR"; exit 1; fi
             missing=0
             for f in gnb_ctl gnb_es gnb_crypto gnb; do
@@ -217,19 +174,19 @@ jobs:
               exit 1
             fi
 
-      - name: Package
-        run: |
-          OUT_PARENT="$GITHUB_WORKSPACE/.out/${{ steps.tag.outputs.tag }}/${{ matrix.os }}/${{ matrix.arch }}"
-          PKG_DIR="$GITHUB_WORKSPACE/.pkg/${{ steps.tag.outputs.tag }}"
-          ARCHIVE="${PROJECT}_${{ matrix.os }}_${{ matrix.arch }}_${{ steps.tag.outputs.tag }}.tgz"
-          tar -czvf "$ARCHIVE" -C "$OUT_PARENT" bin
-          mv "$ARCHIVE" "$PKG_DIR/"
+    - name: Package
+      run: |
+        OUT_PARENT="$GITHUB_WORKSPACE/.out/${{ steps.tag.outputs.tag }}/${{ matrix.os }}/${{ matrix.arch }}"
+        PKG_DIR="$GITHUB_WORKSPACE/.pkg/${{ steps.tag.outputs.tag }}"
+        ARCHIVE="${PROJECT}_${{ matrix.os }}_${{ matrix.arch }}_${{ steps.tag.outputs.tag }}.tgz"
+        tar -czvf "$ARCHIVE" -C "$OUT_PARENT" bin
+        mv "$ARCHIVE" "$PKG_DIR/"
 
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: gnb-${{ matrix.os }}-${{ matrix.arch }}
-          path: .pkg/${{ steps.tag.outputs.tag }}/*
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: gnb-${{ matrix.os }}-${{ matrix.arch }}
+        path: .pkg/${{ steps.tag.outputs.tag }}/*
 
   publish:
     needs: build
