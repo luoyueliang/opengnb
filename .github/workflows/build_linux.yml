@@ -141,7 +141,7 @@ jobs:
             # 仅当匹配行且未包含 -static 时插入
             sed -i "/\${CC} -o \${${sym}} /{/ -static /! s|\(${CC} -o \${${sym}}[^\n]*\)|\1 -static|}" "$MF" || true
           done
-          echo "After static patch preview:"; grep -E "\\${CC} -o \\${(GNB_CTL|GNB_ES|GNB_CRYPTO|GNB_CLI)}" -n "$MF" || true
+          echo "After static patch preview:"; grep -E '\${CC} -o \${GNB_CTL}|\${CC} -o \${GNB_ES}|\${CC} -o \${GNB_CRYPTO}|\${CC} -o \${GNB_CLI}' -n "$MF" || true
 
       - name: Build
         run: |
