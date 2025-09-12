@@ -62,9 +62,7 @@ jobs:
           sudo apt-get install -y gcc-aarch64-linux-gnu gcc-arm-linux-gnueabihf || true
           sudo apt-get install -y gcc-mips-linux-gnu gcc-mipsel-linux-gnu gcc-mips64-linux-gnuabi64 gcc-mips64el-linux-gnuabi64 || true
           sudo apt-get install -y gcc-riscv64-linux-gnu || true
-
-      
-
+ 
       - name: Cache OpenWrt musl toolchains
         if: matrix.os == 'openwrt'
         uses: actions/cache@v3
@@ -113,32 +111,33 @@ jobs:
           if [ -d /tmp/musl-cross-arm-linux-musleabihf/bin ]; then
             echo "/tmp/musl-cross-arm-linux-musleabihf/bin" >> $GITHUB_PATH
           fi
-        - name: Setup musl cross toolchain (auto)
-          run: |
-            set -e
-            cd /tmp
-            declare -A musl_map=(
-              [riscv64]=riscv64-linux-musl
-              [armv7-softfp]=arm-linux-musleabihf
-              [armv7-hardfp]=arm-linux-musleabihf
-              [mipsel]=mipsel-linux-musl
-              [mipsel-muslsf]=mipsel-linux-muslsf
-              [amd64]=x86_64-linux-musl
-              [x86_64]=x86_64-linux-musl
-              [arm64]=aarch64-linux-musl
-              [mips]=mips-linux-musl
-              [mips64]=mips64-linux-musl
-              [mips64el]=mips64el-linux-musl
-            )
-            arch="${{ matrix.arch }}"
-            pkg="${musl_map[$arch]}"
-            if [ -n "$pkg" ]; then
-              if [ ! -d "/tmp/${pkg}-cross" ]; then
-                wget -q "https://musl.cc/${pkg}-cross.tgz" -O "/tmp/${pkg}-cross.tgz"
-                tar -xzf "/tmp/${pkg}-cross.tgz" -C /tmp/
-              fi
-              echo "/tmp/${pkg}-cross/bin" >> $GITHUB_PATH
+
+      - name: Setup musl cross toolchain (auto)
+        run: |
+          set -e
+          cd /tmp
+          declare -A musl_map=(
+            [riscv64]=riscv64-linux-musl
+            [armv7-softfp]=arm-linux-musleabihf
+            [armv7-hardfp]=arm-linux-musleabihf
+            [mipsel]=mipsel-linux-musl
+            [mipsel-muslsf]=mipsel-linux-muslsf
+            [amd64]=x86_64-linux-musl
+            [x86_64]=x86_64-linux-musl
+            [arm64]=aarch64-linux-musl
+            [mips]=mips-linux-musl
+            [mips64]=mips64-linux-musl
+            [mips64el]=mips64el-linux-musl
+          )
+          arch="${{ matrix.arch }}"
+          pkg="${musl_map[$arch]}"
+          if [ -n "$pkg" ]; then
+            if [ ! -d "/tmp/${pkg}-cross" ]; then
+              wget -q "https://musl.cc/${pkg}-cross.tgz" -O "/tmp/${pkg}-cross.tgz"
+              tar -xzf "/tmp/${pkg}-cross.tgz" -C /tmp/
             fi
+            echo "/tmp/${pkg}-cross/bin" >> $GITHUB_PATH
+          fi
       
       
           
