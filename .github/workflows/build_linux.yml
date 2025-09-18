@@ -199,6 +199,8 @@ jobs:
               ;;
             arm64)         
               export CC=aarch64-linux-gnu-gcc 
+              # arm64 也应该支持静态链接
+              STATIC_LINKING=true
               ;;
             armv7-softfp|armv7-hardfp)
               if command -v arm-linux-musleabihf-gcc >/dev/null 2>&1; then
@@ -212,6 +214,8 @@ jobs:
               ;;
             mips)          
               export CC=mips-linux-gnu-gcc 
+              # mips 也应该支持静态链接 
+              STATIC_LINKING=true
               ;;
             mipsel)        
               if command -v mipsel-linux-musl-gcc >/dev/null 2>&1; then 
@@ -221,6 +225,7 @@ jobs:
               else 
                 export CC=mipsel-linux-gnu-gcc
                 echo "WARN: Using glibc toolchain for ${{ matrix.arch }}, static linking may fail"
+                STATIC_LINKING=true  # 尝试静态链接，即使使用glibc
               fi 
               ;;
             mipsel-muslsf) 
@@ -238,9 +243,13 @@ jobs:
               ;;
             mips64)        
               export CC=mips64-linux-gnuabi64-gcc 
+              # mips64 也应该支持静态链接
+              STATIC_LINKING=true
               ;;
             mips64el)      
               export CC=mips64el-linux-gnuabi64-gcc 
+              # mips64el 也应该支持静态链接
+              STATIC_LINKING=true
               ;;
             riscv64)
               if command -v riscv64-linux-musl-gcc >/dev/null 2>&1; then
@@ -250,6 +259,7 @@ jobs:
               else
                 export CC=riscv64-linux-gnu-gcc
                 echo "WARN: Using glibc toolchain for ${{ matrix.arch }}, static linking may fail"
+                STATIC_LINKING=true  # 尝试静态链接，即使使用glibc
               fi
               ;;
           esac
