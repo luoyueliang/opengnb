@@ -236,6 +236,7 @@ jobs:
                 echo "Using musl toolchain for ${{ matrix.arch }}: arm-linux-musleabihf-gcc"
               else
                 export CC=arm-linux-gnueabihf-gcc
+                STATIC_LINKING=true  # 尝试静态链接，即使使用glibc
                 echo "WARN: Using glibc toolchain for ${{ matrix.arch }}, static linking may fail"
               fi
               ;;
@@ -388,17 +389,23 @@ jobs:
           for f in gnb_ctl gnb_es gnb_crypto gnb; do
             if [ -f "$OUT_DIR/$f" ]; then
               info=$(file -b "$OUT_DIR/$f")
-              echo "$f: $info"
+              size=$(stat -c%s "$OUT_DIR/$f" 2>/dev/null || stat -f%z "$OUT_DIR/$f" 2>/dev/null || echo "unknown")
+              echo "$f: $info (size: $size bytes)"
               
               # 压缩二进制文件体积
               strip "$OUT_DIR/$f" 2>/dev/null || true
-              echo "Stripped $f"
+              new_size=$(stat -c%s "$OUT_DIR/$f" 2>/dev/null || stat -f%z "$OUT_DIR/$f" 2>/dev/null || echo "unknown")
+              echo "Stripped $f (new size: $new_size bytes)"
               
               # 验证链接类型
               if [ "${STATIC_LINKING:-false}" = "true" ]; then
                 # 期望静态链接
                 if echo "$info" | grep -qi "statically linked\|static-pie linked"; then
                   echo "✓ $f is static (as expected)"
+                  # 静态链接的二进制通常应该比较大
+                  if [ "$new_size" != "unknown" ] && [ "$new_size" -lt 500000 ]; then
+                    echo "⚠️  WARNING: $f is marked as static but size ($new_size bytes) seems small for a static binary"
+                  fi
                 else
                   echo "ERROR: $f is not static but static linking was enabled"; missing=1
                 fi
