@@ -407,8 +407,65 @@ jobs:
               size=$(stat -c%s "$OUT_DIR/$f" 2>/dev/null || stat -f%z "$OUT_DIR/$f" 2>/dev/null || echo "unknown")
               echo "$f: $info (size: $size bytes)"
               
-              # 压缩二进制文件体积
-              strip "$OUT_DIR/$f" 2>/dev/null || true
+              # 压缩二进制文件体积 - 使用对应架构的strip工具
+              STRIP_CMD="strip"
+              case "${{ matrix.arch }}" in
+                arm64)
+                  if command -v aarch64-linux-musl-strip >/dev/null 2>&1; then
+                    STRIP_CMD="aarch64-linux-musl-strip"
+                  elif command -v aarch64-linux-gnu-strip >/dev/null 2>&1; then
+                    STRIP_CMD="aarch64-linux-gnu-strip"
+                  fi
+                  ;;
+                armv7-softfp|armv7-hardfp)
+                  if command -v arm-linux-musleabihf-strip >/dev/null 2>&1; then
+                    STRIP_CMD="arm-linux-musleabihf-strip"
+                  elif command -v arm-linux-gnueabihf-strip >/dev/null 2>&1; then
+                    STRIP_CMD="arm-linux-gnueabihf-strip"
+                  fi
+                  ;;
+                mipsel)
+                  if command -v mipsel-linux-musl-strip >/dev/null 2>&1; then
+                    STRIP_CMD="mipsel-linux-musl-strip"
+                  elif command -v mipsel-linux-gnu-strip >/dev/null 2>&1; then
+                    STRIP_CMD="mipsel-linux-gnu-strip"
+                  fi
+                  ;;
+                mipsel-muslsf)
+                  if command -v mipsel-linux-muslsf-strip >/dev/null 2>&1; then
+                    STRIP_CMD="mipsel-linux-muslsf-strip"
+                  elif command -v mipsel-linux-musl-strip >/dev/null 2>&1; then
+                    STRIP_CMD="mipsel-linux-musl-strip"
+                  elif command -v mipsel-linux-gnu-strip >/dev/null 2>&1; then
+                    STRIP_CMD="mipsel-linux-gnu-strip"
+                  fi
+                  ;;
+                mips)
+                  if command -v mips-linux-gnu-strip >/dev/null 2>&1; then
+                    STRIP_CMD="mips-linux-gnu-strip"
+                  fi
+                  ;;
+                mips64)
+                  if command -v mips64-linux-gnuabi64-strip >/dev/null 2>&1; then
+                    STRIP_CMD="mips64-linux-gnuabi64-strip"
+                  fi
+                  ;;
+                mips64el)
+                  if command -v mips64el-linux-gnuabi64-strip >/dev/null 2>&1; then
+                    STRIP_CMD="mips64el-linux-gnuabi64-strip"
+                  fi
+                  ;;
+                riscv64)
+                  if command -v riscv64-linux-musl-strip >/dev/null 2>&1; then
+                    STRIP_CMD="riscv64-linux-musl-strip"
+                  elif command -v riscv64-linux-gnu-strip >/dev/null 2>&1; then
+                    STRIP_CMD="riscv64-linux-gnu-strip"
+                  fi
+                  ;;
+              esac
+              
+              echo "Using strip command: $STRIP_CMD"
+              $STRIP_CMD "$OUT_DIR/$f" 2>/dev/null || echo "Strip failed or not needed"
               new_size=$(stat -c%s "$OUT_DIR/$f" 2>/dev/null || stat -f%z "$OUT_DIR/$f" 2>/dev/null || echo "unknown")
               echo "Stripped $f (new size: $new_size bytes)"
               
@@ -417,9 +474,11 @@ jobs:
                 # 期望静态链接
                 if echo "$info" | grep -qi "statically linked\|static-pie linked"; then
                   echo "✓ $f is static (as expected)"
-                  # 静态链接的二进制通常应该比较大
-                  if [ "$new_size" != "unknown" ] && [ "$new_size" -lt 500000 ]; then
-                    echo "⚠️  WARNING: $f is marked as static but size ($new_size bytes) seems small for a static binary"
+                  # 调整大小检查 - strip后的静态二进制可能较小
+                  if [ "$new_size" != "unknown" ] && [ "$new_size" -lt 200000 ]; then
+                    echo "⚠️  WARNING: $f is marked as static but size ($new_size bytes) seems very small for a static binary"
+                  elif [ "$new_size" != "unknown" ] && [ "$new_size" -lt 500000 ]; then
+                    echo "ℹ️  INFO: $f static binary size ($new_size bytes) is reasonable after stripping"
                   fi
                 else
                   echo "ERROR: $f is not static but static linking was enabled"; missing=1
