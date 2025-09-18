@@ -182,6 +182,27 @@ jobs:
                 echo "MUSL_AVAILABLE=true" >> $GITHUB_ENV
               fi
               ;;
+            amd64)
+              echo "No extra musl toolchain needed for native amd64"
+              ;;
+            arm64)
+              # 为 arm64 添加 musl 工具链支持以确保静态链接
+              if [ ! -d aarch64-linux-musl-cross ]; then
+                if wget -q https://musl.cc/aarch64-linux-musl-cross.tgz -O aarch64-linux-musl-cross.tgz; then
+                  tar -xzf aarch64-linux-musl-cross.tgz && musl_available=true
+                  echo "aarch64-linux-musl-cross toolchain downloaded and extracted"
+                else
+                  echo "WARN: aarch64-linux-musl musl download failed, will use glibc cross-compiler"
+                fi
+              else
+                musl_available=true
+              fi
+              if [ "$musl_available" = "true" ] && [ -d aarch64-linux-musl-cross/bin ]; then
+                echo "/tmp/aarch64-linux-musl-cross/bin" >> $GITHUB_PATH
+                echo "MUSL_AVAILABLE=true" >> $GITHUB_ENV
+                echo "Added aarch64-linux-musl-cross/bin to PATH"
+              fi
+              ;;
             *) echo "No extra musl toolchain for ${{ matrix.arch }}";;
           esac
       
@@ -198,9 +219,15 @@ jobs:
               STATIC_LINKING=true
               ;;
             arm64)         
-              export CC=aarch64-linux-gnu-gcc 
-              # arm64 也应该支持静态链接
-              STATIC_LINKING=true
+              if command -v aarch64-linux-musl-gcc >/dev/null 2>&1; then
+                export CC=aarch64-linux-musl-gcc
+                STATIC_LINKING=true  # musl支持静态链接
+                echo "Using musl toolchain for ${{ matrix.arch }}: aarch64-linux-musl-gcc"
+              else
+                export CC=aarch64-linux-gnu-gcc
+                STATIC_LINKING=true  # 尝试静态链接，即使使用glibc
+                echo "WARN: Using glibc toolchain for ${{ matrix.arch }}, static linking may fail"
+              fi
               ;;
             armv7-softfp|armv7-hardfp)
               if command -v arm-linux-musleabihf-gcc >/dev/null 2>&1; then
@@ -329,8 +356,14 @@ jobs:
           esac
           
           # 根据是否支持静态链接来构建
+          echo "STATIC_LINKING status: ${STATIC_LINKING:-false}"
+          echo "Architecture: ${{ matrix.arch }}"
+          echo "Compiler: $CC"
+          
           if [ "${STATIC_LINKING:-false}" = "true" ]; then
             echo "Building with static linking..."
+            echo "CLI_LDFLAGS will be: -static $CLI_LDFLAGS"
+            echo "GNB_ES_LDFLAGS will be: -static $GNB_ES_LDFLAGS"
             make -C src -f "${{ matrix.makefile }}" install \
               CC="$CC" \
               CLI_LDFLAGS="-static $CLI_LDFLAGS" \
