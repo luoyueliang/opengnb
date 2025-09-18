@@ -257,15 +257,24 @@ jobs:
               fi 
               ;;
             mipsel-muslsf) 
+              echo "=== mipsel-muslsf toolchain check ==="
+              echo "PATH before toolchain check: $PATH"
+              echo "Checking for mipsel-linux-muslsf-gcc..."
+              which mipsel-linux-muslsf-gcc || echo "mipsel-linux-muslsf-gcc not found in PATH"
+              ls -la /tmp/mipsel-linux-muslsf-cross/bin/ 2>/dev/null || echo "Toolchain bin directory not found"
+              
               if command -v mipsel-linux-muslsf-gcc >/dev/null 2>&1; then
                 export CC=mipsel-linux-muslsf-gcc
                 STATIC_LINKING=true  # musl支持静态链接
-                echo "Using musl toolchain for ${{ matrix.arch }}: mipsel-linux-muslsf-gcc"
+                echo "✓ Using musl toolchain for ${{ matrix.arch }}: mipsel-linux-muslsf-gcc"
+                echo "Compiler version: $($CC --version | head -1)"
               else
                 echo "ERROR: mipsel-muslsf requires mipsel-linux-muslsf-gcc but not found in PATH"
-                echo "Available gcc compilers:"
-                find /tmp -name "*gcc" 2>/dev/null || echo "No gcc found in /tmp"
-                echo "PATH: $PATH"
+                echo "Available gcc compilers in /tmp:"
+                find /tmp -name "*gcc*" 2>/dev/null | head -10 || echo "No gcc found in /tmp"
+                echo "Current PATH: $PATH"
+                echo "Contents of /tmp:"
+                ls -la /tmp/ | grep -E "(mipsel|muslsf)" || echo "No mipsel/muslsf directories found"
                 exit 1
               fi
               ;;
@@ -363,12 +372,18 @@ jobs:
           
           if [ "${STATIC_LINKING:-false}" = "true" ]; then
             echo "Building with static linking..."
+            echo "CC: $CC"
+            echo "CFLAGS: $CFLAGS"
+            echo "LDFLAGS: $LDFLAGS"
             echo "CLI_LDFLAGS will be: -static $CLI_LDFLAGS"
             echo "GNB_ES_LDFLAGS will be: -static $GNB_ES_LDFLAGS"
+            echo "Makefile: ${{ matrix.makefile }}"
+            echo "=== Starting make install ==="
             make -C src -f "${{ matrix.makefile }}" install \
               CC="$CC" \
               CLI_LDFLAGS="-static $CLI_LDFLAGS" \
               GNB_ES_LDFLAGS="-static $GNB_ES_LDFLAGS"
+            echo "=== Make install completed ==="
           else
             echo "Building with dynamic linking..."
             make -C src -f "${{ matrix.makefile }}" install \
