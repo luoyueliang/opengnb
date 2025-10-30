@@ -52,13 +52,13 @@ GNB Linux 本地编译与上传脚本
     
     OpenWRT 平台 (openwrt:arch):
       - OpenWRT SDK (默认 24.10) + musl 静态链接
-      - 适用于所有 OpenWRT 设备(向下兼容)
+      - 适用于所有 OpenWRT 路由器(向下兼容)
       - 可通过 --sdk-version 指定特定版本
       → 调用 build_openwrt.sh
     
     嵌入式平台 (embedded:arch):
       - musl-cross + musl 静态链接
-      - 适用于 UBNT, Mikrotik 等非 OpenWRT 设备
+      - 适用于使用 musl libc 的自定义嵌入式系统
       → 调用 build_embedded_musl.sh
 
 环境变量配置 (可选):
@@ -81,7 +81,7 @@ GNB Linux 本地编译与上传脚本
     # 仅编译特定架构
     $0 --arch linux:arm64 --arch openwrt:mipsel v1.5.3
     
-    # 编译嵌入式设备 (UBNT EdgeRouter)
+    # 编译嵌入式 musl 系统
     $0 --arch embedded:mipsel v1.5.3
     
     # 仅上传已编译的文件
@@ -115,9 +115,9 @@ GNB Linux 本地编译与上传脚本
     - upload.sh                上传到服务器
 
 目标平台选择:
-    --os=linux      标准 Linux 发行版 (动态链接 glibc)
-    --os=openwrt    OpenWRT 设备 (静态链接 musl, 推荐)
-    --os=embedded   嵌入式设备 (静态链接 musl, UBNT等)
+    linux:xxx       标准 Linux 发行版 (静态链接 glibc, 推荐用于非路由设备)
+    openwrt:xxx     OpenWRT 路由器 (静态链接 musl)
+    embedded:xxx    musl 嵌入式系统 (静态链接 musl)
 
 EOF
 }

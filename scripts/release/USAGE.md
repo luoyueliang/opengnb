@@ -1,30 +1,19 @@
 # GNB 编译快速参考
 
-## 最新更新（v4）
+## 核心特性
 
-### 优化内容
-1. ✅ **默认使用 OpenWRT 24.10 通用版**：最新工具链(GCC 13.3.0 + musl 1.2.5) + 向下兼容
-2. ✅ 保留精确版本支持：用于解决特定设备兼容性问题
-3. ✅ 保留 musl-cross：用于非 OpenWRT 的嵌入式设备(如 UBNT EdgeRouter)
-4. ✅ 优化工具链选择策略：更清晰的优先级和使用场景
-5. ✅ **统一参数格式**：所有脚本支持 `--param value` 和 `--param=value` 两种格式
+1. ✅ **OpenWRT 24.10 通用版**：最新工具链 + 静态链接 + 向下兼容所有版本
+2. ✅ **精确版本支持**：解决特定设备兼容性问题时使用
+3. ✅ **统一参数格式**：支持 `--param value` 和 `--param=value` 两种格式
 
-### 参数格式规范
-
-所有脚本支持两种参数格式（详见 [PARAMETER_STANDARD.md](PARAMETER_STANDARD.md)）：
-
-- **空格分隔**（推荐）：`--arch arm64`
-- **等号连接**（兼容）：`--arch=arm64`
-- **可混合使用**：`--arch=arm64 --sdk-version 24.10`
-
-### 工具链选择策略
+## 工具链选择策略
 
 | 平台 | 推荐工具链 | 使用场景 | 链接方式 |
 |------|-----------|---------|---------|
-| **OpenWRT** | OpenWRT 24.10 SDK | 所有 OpenWRT 设备（默认） | **静态链接** musl（通用） |
+| **OpenWRT** | OpenWRT 24.10 SDK | 所有 OpenWRT 路由器 | **静态链接** musl（通用） |
 | **OpenWRT** | OpenWRT SDK 指定版本 | 特定版本兼容性问题 | **动态链接**（针对版本） |
-| **嵌入式** | musl-cross | UBNT/非OpenWRT设备 | 静态链接 musl |
-| **Linux** | GNU gcc | 标准 Linux 发行版 | 静态链接 glibc（默认） |
+| **Linux** | GNU gcc + glibc | 标准 Linux 发行版 | 静态链接 glibc |
+| **嵌入式** | musl-cross | 自定义嵌入式系统 | 静态链接 musl |
 
 **OpenWRT 编译逻辑**：
 ```
@@ -54,13 +43,7 @@ sudo ./install_toolchains.sh --platform=openwrt --arch=all --version=23.05
 sudo ./install_toolchains.sh --platform=openwrt --arch=mipsel --version=19.07
 ```
 
-### 嵌入式设备：安装 musl-cross（UBNT 等设备）
-```bash
-# 为 UBNT EdgeRouter (mipsel) 安装 musl-cross
-sudo ./install_toolchains.sh --platform=musl --arch=mipsel
-```
-
-### Linux：安装 GNU 工具链
+### Linux：安装 GNU 工具链（推荐用于非路由设备）
 ```bash
 sudo ./install_toolchains.sh --platform=gnu --arch=all
 ```
@@ -82,13 +65,13 @@ cd ~/mynet/gnb/scripts/release
 
 ### 只编译特定平台和架构
 ```bash
-# Linux 平台特定架构
+# Linux 平台特定架构（GNU glibc，推荐用于非路由Linux设备）
 ./build_and_upload.sh --arch linux:arm64 --arch linux:riscv64 v1.5.3
 
 # OpenWRT 平台特定架构
 ./build_and_upload.sh --arch openwrt:mipsel --arch openwrt:arm64 v1.5.3
 
-# 嵌入式设备 (UBNT EdgeRouter)
+# 嵌入式设备（自定义嵌入式系统）
 ./build_and_upload.sh --arch embedded:mipsel v1.5.3
 ```
 
@@ -106,10 +89,13 @@ cd ~/mynet/gnb/scripts/release
 
 ### Linux 平台 (linux:arch) - `build_linux.sh`
 - **工具链**: GNU gcc + glibc
-- **链接方式**: 静态链接（默认）/ 动态链接（可选 `--dynamic`）
+- **链接方式**: 静态链接
 - **架构**: amd64, i386, arm64, armv7, mips, mipsel, mips64, mips64el, riscv64
-- **适用**: Ubuntu, Debian, CentOS, Fedora 等标准 Linux 发行版
-- **说明**: 默认静态编译，可提供极端情况下的动态版本
+- **适用**: 
+  - 标准 Linux 发行版（Ubuntu, Debian, CentOS, Fedora等）
+  - **非路由器设备**（如服务器、工作站、NAS）
+  - **UBNT EdgeRouter** 等基于标准 Linux 的设备（推荐）
+- **说明**: 使用 glibc 静态链接，兼容性最好
 
 ### OpenWRT 平台 (openwrt:arch) - `build_openwrt.sh`
 - **工具链**: OpenWRT SDK（优先）→ musl-cross（降级）
@@ -117,15 +103,17 @@ cd ~/mynet/gnb/scripts/release
   - 默认：静态链接 musl（通用，兼容所有 OpenWRT 版本）
   - 指定版本：动态链接（针对特定 OpenWRT 版本）
 - **架构**: amd64, i386, arm64, armv7, armv7-softfp, mips, mips-softfp, mipsel, mipsel-softfp, mips64, mips64el, riscv64
-- **适用**: 所有 OpenWRT 路由器设备
-- **说明**: 已完成，默认 SDK 24.10 静态编译，向下兼容所有版本
+- **适用**: **OpenWRT 路由器设备**（各品牌路由器）
+- **说明**: 默认 SDK 24.10 静态编译，向下兼容所有版本
 
 ### 嵌入式平台 (embedded:arch) - `build_embedded_musl.sh`
 - **工具链**: musl-cross
 - **链接方式**: 静态链接 musl
 - **架构**: amd64, i386, arm64, armv7, armv7-softfp, mips, mips-softfp, mipsel, mipsel-softfp, mips64, mips64el, riscv64
-- **适用**: UBNT EdgeRouter, Mikrotik RouterOS, 自定义嵌入式 Linux 系统
-- **说明**: 为非 OpenWRT 的嵌入式设备提供支持
+- **适用**: 
+  - **自定义嵌入式 Linux 系统**（使用 musl libc）
+  - Mikrotik RouterOS（部分型号）
+- **说明**: 专为 musl libc 嵌入式系统设计
 
 ## 输出目录
 - 编译临时文件: `~/mynet/gnb/.build/v1.5.3/<平台>/<架构>/`

@@ -2,7 +2,7 @@
 #
 # GNB 编译系统 - 嵌入式 musl 编译脚本
 # 使用 musl-cross 工具链进行静态链接编译
-# 目标: 非 OpenWRT 的嵌入式设备 (如 UBNT EdgeRouter, Mikrotik等)
+# 目标: 使用 musl libc 的自定义嵌入式 Linux 系统
 #
 
 set -e
@@ -71,24 +71,25 @@ GNB 嵌入式 musl 编译脚本 (musl-cross + 静态链接)
     - armv7, armv7-softfp
     - mips64, mips64el
     - mips, mips-softfp
-    - mipsel, mipsel-softfp (常用于 UBNT EdgeRouter)
+    - mipsel, mipsel-softfp
     - riscv64
 
 工具链策略:
     使用 musl-cross 工具链 (GCC 11.2.1 + musl 1.2.2)
     - 静态链接 musl libc (无运行时依赖)
-    - 适用于非 OpenWRT 的嵌入式 Linux 设备
-    - 例如: UBNT EdgeRouter, Mikrotik RouterOS, 自定义嵌入式系统
+    - 适用于使用 musl libc 的自定义嵌入式 Linux 系统
+    - 例如: 自定义嵌入式系统, Mikrotik RouterOS (部分型号)
 
-vs OpenWRT 编译:
-    • OpenWRT 设备应使用 build_openwrt.sh (OpenWRT SDK 24.10)
-    • 嵌入式设备使用此脚本 (musl-cross)
+平台选择建议:
+    • OpenWRT 路由器 → 使用 build_openwrt.sh (OpenWRT SDK)
+    • 标准 Linux 设备 → 使用 build_linux.sh (GNU glibc, 推荐用于 UBNT 等)
+    • musl 嵌入式系统 → 使用此脚本 (musl-cross)
 
 示例:
     # 编译所有架构
     $0 v1.5.3
 
-    # 只编译 UBNT EdgeRouter (mipsel)
+    # 只编译特定架构
     $0 v1.5.3 --arch embedded:mipsel
 
     # 编译多个架构
@@ -102,7 +103,7 @@ vs OpenWRT 编译:
     发布包:   $DIST_DIR/<版本号>/gnb_embedded_<架构>_<版本号>.tar.gz
 
 工具链安装:
-    sudo ./install_toolchains.sh --platform=musl --arch=mipsel
+    sudo ./install_toolchains.sh --platform=musl --arch=all
 
 EOF
     exit 0

@@ -83,7 +83,9 @@ GNB Linux 编译脚本 (静态链接)
     $0 ver1.6.0.a --clean
 
 注意:
-    - 此脚本使用 GNU gcc 进行静态链接编译
+    - 此脚本使用 GNU gcc + glibc 进行静态链接编译
+    - 推荐用于标准 Linux 发行版和非路由器设备
+    - 适用于 UBNT EdgeRouter 等基于标准 Linux 的设备
     - x86 架构使用本地 gcc
     - 其他架构需要安装对应的交叉编译工具链
     - 安装命令示例: sudo apt-get install gcc-aarch64-linux-gnu

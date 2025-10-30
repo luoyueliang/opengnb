@@ -53,7 +53,7 @@ GNB 交叉编译工具链安装脚本
                         • 优先级: OpenWRT SDK > musl-cross > 报错
   
   --platform=musl       musl-cross 工具链
-                        • 用于非 OpenWRT 的嵌入式设备 (如 UBNT EdgeRouter)
+                        • 用于使用 musl libc 的自定义嵌入式系统
                         • 静态编译，无运行时依赖
   
   --platform=gnu        系统 GNU gcc
@@ -67,10 +67,10 @@ GNB 交叉编译工具链安装脚本
   # 安装 OpenWRT 23.05 精确版 (兼容性问题时使用)
   sudo $0 --platform=openwrt --arch=aarch64 --version=23.05
 
-  # 安装 musl 工具链 (用于 UBNT 等非 OpenWRT 设备)
+  # 安装 musl 工具链 (用于 musl libc 嵌入式系统)
   sudo $0 --platform=musl --arch=mipsel
 
-  # 安装 GNU 工具链
+  # 安装 GNU 工具链 (推荐用于非路由器 Linux 设备)
   sudo $0 --platform=gnu --arch=all
 
 EOF
