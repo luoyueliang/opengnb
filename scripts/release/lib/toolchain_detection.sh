@@ -153,12 +153,45 @@ setup_arch_toolchain() {
                 print_info "STAGING_DIR: $STAGING_DIR"
                 return 0
             else
-                print_error "未找到 OpenWRT SDK $sdk_version 的 $arch 工具链"
+                print_error "未找到 OpenWRT SDK $sdk_version 的 $sdk_arch 工具链"
                 print_info ""
-                print_info "请安装 OpenWRT SDK 工具链："
-                print_info "  sudo ./scripts/release/install_toolchains.sh --platform=openwrt --arch=$arch --version=$sdk_version"
+                print_info "OpenWRT SDK 工具链按目标平台组织，请根据需要安装："
                 print_info ""
-                print_info "或者使用嵌入式平台编译（musl-cross）："
+                
+                # 根据架构提供不同的安装建议
+                case "$arch" in
+                    mipsel-softfp)
+                        print_info "MIPSEL 软浮点架构对应的目标平台："
+                        print_info "  • ramips/mt7620 (MT7620 系列路由器)"
+                        print_info "  • ramips/rt305x (RT305x 系列路由器)"
+                        print_info ""
+                        print_info "安装命令示例："
+                        print_info "  sudo ./scripts/release/install_toolchains.sh --platform=openwrt --arch=mipsel --version=$sdk_version"
+                        print_info "  (默认安装 ramips/mt7621，你可能需要手动下载 mt7620/rt305x SDK)"
+                        ;;
+                    mips-softfp)
+                        print_info "MIPS 软浮点架构对应的目标平台："
+                        print_info "  • ath79/tiny (简化版 AR71xx/AR93xx 路由器)"
+                        print_info ""
+                        print_info "安装命令示例："
+                        print_info "  sudo ./scripts/release/install_toolchains.sh --platform=openwrt --arch=mips --version=$sdk_version"
+                        print_info "  (默认安装 ath79/generic，你可能需要手动下载 tiny SDK)"
+                        ;;
+                    armv7-softfp)
+                        print_info "ARMv7 软浮点架构对应的目标平台："
+                        print_info "  • bcm27xx/bcm2708 (树莓派 Zero/1)"
+                        print_info ""
+                        print_info "安装命令示例："
+                        print_info "  sudo ./scripts/release/install_toolchains.sh --platform=openwrt --arch=armv7 --version=$sdk_version"
+                        ;;
+                    *)
+                        print_info "请安装对应架构的 OpenWRT SDK："
+                        print_info "  sudo ./scripts/release/install_toolchains.sh --platform=openwrt --arch=$arch --version=$sdk_version"
+                        ;;
+                esac
+                
+                print_info ""
+                print_info "或者使用嵌入式平台编译（musl-cross 工具链）："
                 print_info "  ./scripts/release/build_and_upload.sh --arch embedded:$arch <版本号>"
                 return 1
             fi
@@ -234,16 +267,17 @@ setup_toolchain() {
         armv7|armv7-softfp)
             # 判断 float ABI
             local is_softfp=false
-            local musl_target="arm-linux-musleabihf"
+            local musl_target="armv7-linux-musleabihf"
             local gnu_target="arm-linux-gnueabihf-gcc"
             
             if [[ "$arch" == *"softfp"* ]]; then
                 is_softfp=true
-                musl_target="arm-linux-musleabi"
+                musl_target="armv7-linux-musleabi"  # soft-float variant
                 gnu_target="arm-linux-gnueabi-gcc"
             fi
             
-            setup_arch_toolchain "armv7" "$musl_target" "$gnu_target" "arm" "$is_openwrt" || return 1
+            # 传入完整架构名（含 ABI 后缀），以便错误提示能正确识别
+            setup_arch_toolchain "$arch" "$musl_target" "$gnu_target" "arm" "$is_openwrt" || return 1
             
             # 设置 ABI 编译参数（CFLAGS 包含链接时需要的 ABI 标志）
             if [ "$is_softfp" = true ]; then
@@ -264,7 +298,8 @@ setup_toolchain() {
                 musl_target="mips-linux-muslsf"  # soft-float variant
             fi
             
-            setup_arch_toolchain "mips" "$musl_target" "$gnu_target" "mips" "$is_openwrt" || return 1
+            # 传入完整架构名（含 ABI 后缀），以便错误提示能正确识别
+            setup_arch_toolchain "$arch" "$musl_target" "$gnu_target" "mips" "$is_openwrt" || return 1
             
             # 设置 soft-float 参数
             if [ "$is_softfp" = true ]; then
@@ -283,7 +318,8 @@ setup_toolchain() {
                 musl_target="mipsel-linux-muslsf"
             fi
             
-            setup_arch_toolchain "mipsel" "$musl_target" "$gnu_target" "mipsel" "$is_openwrt" || return 1
+            # 传入完整架构名（含 ABI 后缀），以便错误提示能正确识别
+            setup_arch_toolchain "$arch" "$musl_target" "$gnu_target" "mipsel" "$is_openwrt" || return 1
             
             # 设置 soft-float 参数
             if [ "$is_softfp" = true ]; then
