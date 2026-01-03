@@ -29,15 +29,15 @@ char *gnb_make_realpath_dup(char *base_path, char *sub_path);
 #define GNB_MAX_FILE_NAME_LEN 1024
 #define GNB_MAX_DIR_TOKEN_ARRAY_SIZE 1024
 
-typedef struct _gnb_file_info_t{
+#define GNB_FILE_TYPE_INIT 0
+#define GNB_FILE_TYPE_REG  1
+#define GNB_FILE_TYPE_DIR  2
+#define GNB_FILE_TYPE_LNK  3
+
+typedef struct _gnb_file_info_t {
 	char *name;
 	//绝对路径
 	char *abs_name;
-
-	#define GNB_FILE_TYPE_INIT 0
-	#define GNB_FILE_TYPE_REG  1
-	#define GNB_FILE_TYPE_DIR  2
-	#define GNB_FILE_TYPE_LNK  3
 	uint8_t type;
 }gnb_file_info_t;
 
