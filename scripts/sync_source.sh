@@ -85,11 +85,16 @@ if is_tty; then
     echo "No tags found in remote $REPO" 1>&2
     exit 1
   fi
-  # Sort with -V when available
+  # Sort by stripping v/ver prefix so numeric version comparison works correctly
+  # e.g. "1.6.4" and "ver1.6.1" both compare as "1.6.4" vs "1.6.1"
   if has_sort_V; then
-    IFS=$'\n' REMOTE_TAGS=($(printf '%s\n' "${REMOTE_TAGS[@]}" | sort -V)); unset IFS
+    IFS=$'\n' REMOTE_TAGS=($(printf '%s\n' "${REMOTE_TAGS[@]}" | \
+      awk '{stripped=$0; sub(/^ver?/,"",stripped); print stripped"\t"$0}' | \
+      sort -t$'\t' -k1 -V | awk -F'\t' '{print $2}')); unset IFS
   else
-    IFS=$'\n' REMOTE_TAGS=($(printf '%s\n' "${REMOTE_TAGS[@]}" | sort)); unset IFS
+    IFS=$'\n' REMOTE_TAGS=($(printf '%s\n' "${REMOTE_TAGS[@]}" | \
+      awk '{stripped=$0; sub(/^ver?/,"",stripped); print stripped"\t"$0}' | \
+      sort -t$'\t' -k1 | awk -F'\t' '{print $2}')); unset IFS
   fi
   _len=${#REMOTE_TAGS[@]}
   LATEST="${REMOTE_TAGS[$((_len - 1))]}"
