@@ -14,11 +14,11 @@ set -euo pipefail
 
 usage() {
   echo "Usage: $0 [--subdir <path>] [--yes]" 1>&2
-  echo "       Interactive wizard will list source tags from gnbdev/opengnb and target tags in this repo, and optionally push at the end." 1>&2
+  echo "       Interactive wizard will list source tags from opengnb/opengnb and target tags in this repo, and optionally push at the end." 1>&2
   exit 1
 }
 
-REPO="gnbdev/opengnb"; REF=""; SUBDIR="."; VERSION=""; ASSUME_YES=0
+REPO="opengnb/opengnb"; REF=""; SUBDIR="."; VERSION=""; ASSUME_YES=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --subdir) SUBDIR="$2"; shift 2 ;;
@@ -111,17 +111,22 @@ if is_tty; then
   while IFS= read -r _l; do
     [[ -n "_l" ]] && LOCAL_TAGS+=("$_l")
   done < <(list_local_tags)
-  SUGGEST1="$REF"
-  SUGGEST2="${REF}-$(date +%Y%m%d)"
+  # Normalize source tag to ver-prefix form: strip leading v/ver then add 'ver'
+  _ref_stripped="${REF#ver}"; _ref_stripped="${_ref_stripped#v}"
+  SUGGEST1="ver${_ref_stripped}"
+  SUGGEST2="$REF"
+  SUGGEST3="${SUGGEST1}-$(date +%Y%m%d)"
   echo "Choose target tag (release dir name)."
-  echo "  1) $SUGGEST1 (same as source)"
-  echo "  2) $SUGGEST2 (date suffixed)"
-  echo "  3) Select existing local tag"
-  read -r -p "Enter choice [1-3]: " tsel || true
+  echo "  1) $SUGGEST1 (ver-prefixed, recommended)"
+  echo "  2) $SUGGEST2 (same as source)"
+  echo "  3) $SUGGEST3 (ver-prefixed + date)"
+  echo "  4) Select existing local tag"
+  read -r -p "Enter choice [1-4]: " tsel || true
   case "$tsel" in
     1) VERSION="$SUGGEST1" ;;
     2) VERSION="$SUGGEST2" ;;
-    3)
+    3) VERSION="$SUGGEST3" ;;
+    4)
       if [[ ${#LOCAL_TAGS[@]} -eq 0 ]]; then
         echo "No local tags exist; falling back to $SUGGEST1"
         VERSION="$SUGGEST1"
