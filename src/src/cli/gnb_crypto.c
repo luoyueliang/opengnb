@@ -30,12 +30,7 @@
 #include "gnb_binary.h"
 #include "crypto/random/gnb_random.h"
 #include "ed25519/ed25519.h"
-
-#ifndef GNB_SKIP_BUILD_TIME
-#define GNB_BUILD_STRING  "Build Time ["__DATE__","__TIME__"]"
-#else
-#define GNB_BUILD_STRING  "Build Time [Hidden]"
-#endif
+#include "gnb_version.h"
 
 static void show_useage(int argc,char *argv[]) {
     printf("%s\n", GNB_BUILD_STRING);

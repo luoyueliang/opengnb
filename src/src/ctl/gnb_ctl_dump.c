@@ -27,7 +27,6 @@
 #include "gnb_time.h"
 #include "gnb_udp.h"
 #include "gnb_ctl_block.h"
-
 #include "ed25519/sha512.h"
 
 #ifdef _WIN32
@@ -74,11 +73,9 @@ void gnb_ctl_dump_status(gnb_ctl_block_t *ctl_block, gnb_uuid_t in_nodeid, uint8
         }
 
 dump_all_node:
-
         if ( 0 != online_opt && !((GNB_NODE_STATUS_IPV6_PONG | GNB_NODE_STATUS_IPV4_PONG) & node->udp_addr_status) ) {
             continue;
         }
-
         available_address6_list = (gnb_address_list_t *)&node->available_address6_list3_block;
         available_address4_list = (gnb_address_list_t *)&node->available_address4_list3_block;
         static_address_list  = (gnb_address_list_t *)&node->static_address_block;
@@ -87,14 +84,11 @@ dump_all_node:
         push_address_list    = (gnb_address_list_t *)&node->push_address_block;
         available_address6_list = (gnb_address_list_t *)&node->available_address6_list3_block;
         available_address4_list = (gnb_address_list_t *)&node->available_address4_list3_block;
-
         printf("\n====================\n");
-
         printf("node %llu\n",node->uuid64);
         printf("addr4_ping_latency_usec %"PRIu64"\n",node->addr4_ping_latency_usec);
         printf("tun_ipv4 %s\n",GNB_ADDR4STR1(&node->tun_addr4));
         printf("tun_ipv6 %s\n",GNB_ADDR6STR1(&node->tun_ipv6_addr));
-
         if ( (node->in_bytes > 1024) && (node->in_bytes < 1024*1024) ) {
             snprintf(in_bytes_string, 128, "%.3fK bytes", ((float)node->in_bytes/1024));
         } else if ( (node->in_bytes > 1024) && (node->in_bytes < 1024*1024*1024) ) {
@@ -104,7 +98,6 @@ dump_all_node:
         } else {
             snprintf(in_bytes_string, 128, "%"PRIu64" bytes", node->in_bytes);
         }
-
         if ( (node->out_bytes > 1024) && (node->out_bytes < 1024*1024) ) {
             snprintf(out_bytes_string, 128, "%.3fK bytes", ((float)node->out_bytes/1024));
         } else if ( (node->out_bytes > 1024) && (node->out_bytes < 1024*1024*1024) ) {
@@ -114,10 +107,8 @@ dump_all_node:
         } else {
             snprintf(out_bytes_string, 128, "%"PRIu64" bytes", node->out_bytes);
         }
-
         printf("in  %"PRIu64" (%s)\n", node->in_bytes,  in_bytes_string);
         printf("out %"PRIu64" (%s)\n", node->out_bytes, out_bytes_string);
-
         printf("public_key %s\n",GNB_HEX1_BYTE64(node->public_key));
         sha512((const unsigned char *)(node->shared_secret), 32, (unsigned char *)shared_secret_sha512);
         printf("shared_secret_sha512 %s\n",GNB_HEX1_BYTE128(shared_secret_sha512));
@@ -211,19 +202,13 @@ dump_all_node:
         p = line_string;
         wlen = 0;
         line_string_len = LINE_SIZE;
-
         for ( j=0; j<GNB_UNIFIED_FORWARDING_NODE_ARRAY_SIZE; j++ ) {
-
             wlen = snprintf(p, line_string_len-wlen, "%llu,", node->unified_forwarding_node_array[j].uuid64);
-
             line_string_len -= wlen;
-
             if ( line_string_len <= 16 ) {
                 break;
             }
-
             p += wlen;
-
         }
 
         printf("unified node:  %s\n", line_string);

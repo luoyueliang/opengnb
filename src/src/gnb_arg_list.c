@@ -17,7 +17,6 @@
 
 #include <stdlib.h>
 #include <string.h>
-
 #include "gnb_arg_list.h"
 
 gnb_arg_list_t *gnb_arg_list_init(int size) {
@@ -121,7 +120,6 @@ gnb_arg_list_t *gnb_arg_string_to_list(char *string, int num) {
                 goto next;
             }
         }
-
         if ( ' ' != *p && SPACE_SEPARATOR == separator ) {
             status = ARG_STRING;
             *arg_p = *p;
@@ -137,8 +135,7 @@ gnb_arg_list_t *gnb_arg_string_to_list(char *string, int num) {
 next:
         p++;
         c++;
-    
-    };
+    }
     if ( arg_p != arg ) {
         *arg_p = '\0';
         gnb_arg_append(arg_list,arg);

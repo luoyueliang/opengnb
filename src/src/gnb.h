@@ -21,26 +21,19 @@
 #include "gnb_platform.h"
 
 #ifdef __UNIX_LIKE_OS__
-
 #include <stdint.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <sys/time.h>
-
 #endif
 
-
 #ifdef _WIN32
-
 #undef _WIN32_WINNT
 #define _WIN32_WINNT 0x0600
-
 #define _POSIX
-
 #include <winsock2.h>
 #include <ws2tcpip.h>
-
 #endif
 
 #include "gnb_alloc.h"
@@ -56,6 +49,7 @@
 #include "gnb_node_type.h"
 #include "gnb_ctl_block.h"
 #include "gnb_log.h"
+#include "gnb_version.h"
 
 typedef struct _gnb_core_t {
 	gnb_heap_t *heap;
@@ -64,6 +58,7 @@ typedef struct _gnb_core_t {
 	char *if_device_string;
 	gnb_node_t *local_node;
 	gnb_node_t *select_fwd_node;
+
     gnb_node_ring_t index_node_ring;
 	gnb_node_ring_t fwd_node_ring;
 	gnb_address_ring_t index_address_ring;
@@ -144,9 +139,5 @@ typedef struct _gnb_core_t {
 #define GNB_LOG_ID_INDEX_WORKER          4
 #define GNB_LOG_ID_INDEX_SERVICE_WORKER  5
 #define GNB_LOG_ID_DETECT_WORKER         6
-
-#define GNB_VERSION_STRING    "GNB version Dev 1.6.0.c  protocol version 1.6.0"
-#define GNB_COPYRIGHT_STRING  "Copyright (C) 2019 gnbdev<gnbdev@qq.com>"
-#define GNB_URL_STRING        "https://github.com/gnbdev/opengnb"
 
 #endif

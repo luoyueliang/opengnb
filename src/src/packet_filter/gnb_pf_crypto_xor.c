@@ -158,7 +158,7 @@ finish:
     return pf_ctx->pf_status;
 }
 
-static void pf_release_cb(gnb_core_t *gnb_core, gnb_pf_t *pf){
+static void pf_release_cb(gnb_core_t *gnb_core, gnb_pf_t *pf) {
 
 }
 

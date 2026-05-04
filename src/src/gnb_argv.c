@@ -32,13 +32,10 @@
 extern gnb_conf_ext_lite_t gnb_conf_ext_lite;
 
 void show_description(void);
-
 static void show_useage(int argc,char *argv[]);
-
 int check_listen_string(char *listen_string);
 void gnb_setup_listen_addr_port(char *listen_address6_string, uint16_t *port_ptr, char *sockaddress_string, int addr_type);
 void gnb_setup_es_argv(char *es_argv_string);
-
 
 #define GNB_OPT_INIT                   0x91
 
@@ -848,15 +845,27 @@ gnb_conf_t* gnb_argv(int argc,char *argv[]) {
         }
     }
     if ( 0 == conf->lite_mode && 0==conf->public_index_service ) {
-        if ( '\0' == conf->map_file[0] ) {
-            snprintf(conf->map_file, PATH_MAX+NAME_MAX, "%s/%s", conf->conf_dir, "gnb.map");
-        }
-        if ( '\0' == conf->pid_file[0] ) {
-            snprintf(conf->pid_file, PATH_MAX+NAME_MAX,"%s/%s", conf->conf_dir, "gnb.pid");
-        }
-        if ( '\0' == conf->node_cache_file[0] ) {
-            snprintf(conf->node_cache_file, PATH_MAX+NAME_MAX,"%s/%s", conf->conf_dir, "node_cache.dump");
-        }
+		#if defined(GNB_OPENWRT_BUILD)
+		if ( '\0' == conf->map_file[0] ) {
+			snprintf(conf->map_file,        PATH_MAX+NAME_MAX, "/tmp/gnb.%d.map",       conf->udp4_ports[0]);
+		}
+		if ( '\0' == conf->pid_file[0] ) {
+			snprintf(conf->pid_file,        PATH_MAX+NAME_MAX, "/tmp/gnb.%d.pid",       conf->udp4_ports[0]);
+		}
+		if ( '\0' == conf->node_cache_file[0] ) {
+			snprintf(conf->node_cache_file, PATH_MAX+NAME_MAX, "%s/node_cache.%d.dump", conf->binary_dir, conf->udp4_ports[0]);
+		}
+		#else
+		if ( '\0' == conf->map_file[0] ) {
+			snprintf(conf->map_file, PATH_MAX+NAME_MAX, "%s/%s", conf->conf_dir, "gnb.map");
+		}
+		if ( '\0' == conf->pid_file[0] ) {
+			snprintf(conf->pid_file, PATH_MAX+NAME_MAX,"%s/%s", conf->conf_dir, "gnb.pid");
+		}
+		if ( '\0' == conf->node_cache_file[0] ) {
+			snprintf(conf->node_cache_file, PATH_MAX+NAME_MAX,"%s/%s", conf->conf_dir, "node_cache.dump");
+		}
+		#endif
     } else {
         conf->conf_dir[0] = '\0';
         #ifdef __UNIX_LIKE_OS__

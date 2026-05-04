@@ -287,7 +287,7 @@ static int close_tun_openbsd(gnb_core_t *gnb_core) {
     return 0;
 }
 
-static int release_tun_openbsd(gnb_core_t *gnb_core){
+static int release_tun_openbsd(gnb_core_t *gnb_core) {
     return 0;
 }
 

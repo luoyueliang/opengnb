@@ -102,7 +102,7 @@ static int pf_tun_route_cb(gnb_core_t *gnb_core, gnb_pf_t *pf, gnb_pf_ctx_t *pf_
 用 src_node 的密钥对 payload 进行解密, 得到来自 src_node 的虚拟网卡的 ip frame,
 这些 ip frame 将被写入虚拟网卡
 */
-static int pf_inet_route_cb(gnb_core_t *gnb_core, gnb_pf_t *pf, gnb_pf_ctx_t *pf_ctx){
+static int pf_inet_route_cb(gnb_core_t *gnb_core, gnb_pf_t *pf, gnb_pf_ctx_t *pf_ctx) {
     gnb_pf_private_ctx_t *ctx = (gnb_pf_private_ctx_t *)pf->private_ctx;
     if ( ctx->save_time_seed_update_factor != gnb_core->time_seed_update_factor ) {
         init_arc4_keys(gnb_core,pf);
@@ -179,7 +179,7 @@ finish:
     return pf_ctx->pf_status;
 }
 
-static void pf_release_cb(gnb_core_t *gnb_core, gnb_pf_t *pf){
+static void pf_release_cb(gnb_core_t *gnb_core, gnb_pf_t *pf) {
 
 }
 

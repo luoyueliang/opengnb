@@ -21,11 +21,9 @@
 #include "protocol/network_protocol.h"
 
 #ifdef __UNIX_LIKE_OS__
-
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
-
 #endif
 
 #ifdef _WIN32
@@ -41,7 +39,7 @@ static void pf_init_cb(gnb_core_t *gnb_core, gnb_pf_t *pf) {
     GNB_LOG1(gnb_core->log, GNB_LOG_ID_PF, "%s init\n", pf->name);
 }
 
-static void pf_conf_cb(gnb_core_t *gnb_core, gnb_pf_t *pf){
+static void pf_conf_cb(gnb_core_t *gnb_core, gnb_pf_t *pf) {
 
 }
 

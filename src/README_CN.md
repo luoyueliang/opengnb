@@ -34,7 +34,7 @@ subgraph LAN A
 nodea[VPN clientA]
 end
 
-subgraph WAN
+subgraph Internet
 nodef[VPN server]
 end
 
@@ -58,7 +58,7 @@ subgraph LAN A
 nodeA[gnb nodeA]
 end
 
-subgraph WAN
+subgraph Internet
 index[gnb public index node]
 end
 
@@ -80,7 +80,7 @@ subgraph LAN A
 nodeA[gnb nodeA]
 end
 
-subgraph WAN
+subgraph Internet
 
 nodeC[nodeC]
 nodeD[nodeD]
@@ -148,7 +148,7 @@ upd_over_tcp_A[upd_over_tcp]
 end
 
 
-subgraph WAN
+subgraph Internet
 upd_over_tcp_B[upd_over_tcp]
 nodeB[gnb nodeB]
 end
@@ -184,7 +184,7 @@ make -f Makefile.linux install
 主机 A 上用 **root** 执行
 
 ```
-gnb -n 1001 -I "120.76.206.113/9001" --multi-socket=on -p 12345678
+gnb -n 1001 -I "101.32.178.3/9001" --multi-socket=on -p 12345678
 ```
 
 启动成功后，主机 A 上执行 ip addr 可见 GNB 节点 IP
@@ -205,7 +205,7 @@ gnb -n 1001 -I "120.76.206.113/9001" --multi-socket=on -p 12345678
 主机 B 上用 **root** 执行
 
 ```
-gnb -n 1002 -I "120.76.206.113/9001" --multi-socket=on -p 12345678
+gnb -n 1002 -I "101.32.178.3/9001" --multi-socket=on -p 12345678
 ```
 启动成功后，主机 B 上执行 ip addr 可见 GNB 节点 IP
 
@@ -265,6 +265,12 @@ GNB 主机之间的非对称数据加密使得 **forward** 节点无法窥探中
 
 ```
 i|0|101.32.178.3|9001
+i|0|38.47.98.200|9001
+i|0|216.24.178.4|9001
+i|0|146.235.226.72|9001
+i|0|167.234.212.122|9001
+i|0|172.235.205.5|9001
+i|0|172.104.91.191|9001
 ```
 
 

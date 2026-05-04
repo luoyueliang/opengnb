@@ -251,7 +251,6 @@ static void send_push_addr_frame(gnb_worker_t *gnb_index_service_worker, unsigne
     }
 
 finish_fill_address:
-
     push_addr_frame->data.arg0 = action;
     if ( 'a' == attachment ) {
         memcpy(push_addr_frame->data.attachment, src_key_address->attachmenta, INDEX_ATTACHMENT_SIZE);

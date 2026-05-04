@@ -63,7 +63,7 @@ static char * check_domain_name(char *host_string) {
     return NULL;
 }
 
-static void gnb_do_resolv_node_address(gnb_node_t *node, char *host_string, uint16_t port, gnb_log_ctx_t *log){
+static void gnb_do_resolv_node_address(gnb_node_t *node, char *host_string, uint16_t port, gnb_log_ctx_t *log) {
     int ret;
     struct addrinfo hints;
     memset(&hints, 0, sizeof(struct addrinfo));
@@ -165,7 +165,7 @@ void gnb_resolv_address(gnb_es_ctx *es_ctx) {
 /*
 dig -6 TXT +short o-o.myaddr.l.google.com @ns1.google.com | awk -F'"' '{ print $2}'
 */
-void gnb_load_wan_ipv6_address(gnb_es_ctx *es_ctx){
+void gnb_load_wan_ipv6_address(gnb_es_ctx *es_ctx) {
     gnb_log_ctx_t *log = es_ctx->log;
     if ( NULL == es_ctx->wan_address6_file ) {
         return;

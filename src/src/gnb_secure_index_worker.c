@@ -51,7 +51,7 @@ typedef struct _index_worker_ctx_t {
     uint64_t now_time_usec;
     uint64_t last_post_addr_ts_sec;
     pthread_t thread_worker;
-}index_worker_ctx_t;
+} index_worker_ctx_t;
 
 /*crypto and sign*/
 static void send_post_addr_frame(gnb_worker_t *gnb_index_worker) {

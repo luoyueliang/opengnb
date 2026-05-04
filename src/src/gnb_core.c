@@ -338,7 +338,7 @@ static void setup_log_ctx(gnb_conf_t *conf, gnb_log_ctx_t *log) {
     return;
 }
 
-void update_node_crypto_key(gnb_core_t *gnb_core, uint64_t now_sec){
+void update_node_crypto_key(gnb_core_t *gnb_core, uint64_t now_sec) {
     int need_update_time_seed;
     size_t num = gnb_core->ctl_block->node_zone->node_num;
     if ( 0 == num ) {

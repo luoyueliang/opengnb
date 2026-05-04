@@ -36,14 +36,7 @@
 #include "gnb_ctl_block.h"
 #include "gnb_core_frame_type_defs.h"
 #include "es/gnb_es_type.h"
-
-
-#ifndef GNB_SKIP_BUILD_TIME
-#define GNB_BUILD_STRING  "Build Time ["__DATE__","__TIME__"]"
-#else
-#define GNB_BUILD_STRING  "Build Time [Hidden]"
-#endif
-
+#include "gnb_version.h"
 
 gnb_es_ctx* gnb_es_ctx_create(int is_service, char *ctl_block_file,gnb_log_ctx_t *log);
 void gnb_es_ctx_init(gnb_es_ctx *es_ctx);
@@ -51,7 +44,6 @@ void gnb_es_ctx_init(gnb_es_ctx *es_ctx);
 int gnb_daemon();
 
 void save_pid(const char *pid_file);
-
 
 #define GNB_ES_OPT_INIT          0x91
 #define OPT_UPNP                 (GNB_ES_OPT_INIT + 1)
@@ -72,8 +64,9 @@ void save_pid(const char *pid_file);
 void gnb_start_environment_service(gnb_es_ctx *es_ctx);
 
 static void show_useage(int argc,char *argv[]) {
-    printf("GNB Environment Service version 1.6.0.a protocol version 1.6.0\n");
-    printf("%s\n", GNB_BUILD_STRING);
+    printf("GNB Environment Service\n");
+	printf("%s\n", GNB_VERSION_STRING);
+	printf("%s\n", GNB_BUILD_STRING);
     printf("Copyright (C) 2019 gnbdev<gnbdev@qq.com>\n");
     printf("Usage: %s -b CTL_BLOCK [OPTION]\n", argv[0]);
     printf("Command Summary:\n");

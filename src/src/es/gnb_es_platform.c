@@ -47,7 +47,7 @@ static void windows_if_down(gnb_es_ctx *es_ctx) {
 }
 #endif
 
-void gnb_es_if_up(gnb_es_ctx *es_ctx){
+void gnb_es_if_up(gnb_es_ctx *es_ctx) {
 #ifdef _WIN32
     windows_if_up(es_ctx);
 #endif

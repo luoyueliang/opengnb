@@ -30,19 +30,15 @@
 
 #include "gnb_conf_type.h"
 #include "gnb_ctl_block.h"
+#include "gnb_version.h"
 
-#ifndef GNB_SKIP_BUILD_TIME
-#define GNB_BUILD_STRING  "Build Time ["__DATE__","__TIME__"]"
-#else
-#define GNB_BUILD_STRING  "Build Time [Hidden]"
-#endif
 
 void gnb_ctl_dump_status(gnb_ctl_block_t *ctl_block, gnb_uuid_t in_nodeid, uint8_t online_opt);
 void gnb_ctl_dump_address_list(gnb_ctl_block_t *ctl_block, gnb_uuid_t in_nodeid, uint8_t online_opt);
 
 static void show_useage(int argc,char *argv[]) {
-    printf("GNB Ctl version 1.6.0.a protocol version 1.6.0\n");
-
+    printf("GNB Ctl\n");
+	printf("%s\n", GNB_VERSION_STRING);
     printf("%s\n", GNB_BUILD_STRING);
 
     printf("Copyright (C) 2019 gnbdev\n");

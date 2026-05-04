@@ -36,12 +36,7 @@
 #define _WIN32_WINNT 0x0600
 #include <winsock2.h>
 #include <ws2tcpip.h>
-
-//#define __USE_MISC 1
-//#include <in.h>
-
 #define in_addr_t uint32_t
-
 #define _POSIX
 #define __USE_MINGW_ALARM
 #endif
@@ -50,7 +45,7 @@
 
 uint8_t gnb_addr_secure = 0;
 
-unsigned long long gnb_htonll(unsigned long long val){
+unsigned long long gnb_htonll(unsigned long long val) {
 #if __BYTE_ORDER__==__ORDER_LITTLE_ENDIAN__
       uint64_t rv= 0;
       uint8_t x= 0;
@@ -153,7 +148,6 @@ void gnb_address_list_update(gnb_address_list_t *address_list, gnb_address_t *ad
     idx = gnb_address_list_get_free_idx(address_list);
 
 finish:
-
     if ( 0 == address_list->array[idx].port ) {
         if ( address_list->num < address_list->size ) {
             address_list->num += 1;

@@ -30,7 +30,7 @@ subgraph LAN A
 nodea[VPN clientA]
 end
 
-subgraph WAN
+subgraph Internet
 nodef[VPN server]
 end
 
@@ -54,7 +54,7 @@ subgraph LAN A
 nodeA[gnb nodeA]
 end
 
-subgraph WAN
+subgraph Internet
 index[gnb public index node]
 end
 
@@ -76,7 +76,7 @@ subgraph LAN A
 nodeA[gnb nodeA]
 end
 
-subgraph WAN
+subgraph Internet
 
 nodeC[nodeC]
 nodeD[nodeD]
@@ -144,7 +144,7 @@ upd_over_tcp_A[upd_over_tcp]
 end
 
 
-subgraph WAN
+subgraph Internet
 upd_over_tcp_B[upd_over_tcp]
 nodeB[gnb nodeB]
 end
@@ -181,7 +181,7 @@ Assuming that host A and host B need to temporarily penetrate the intranet inter
 Execute with **root** on host A
 
 ```
-gnb -n 1001 -I "120.76.206.113/9001" --multi-socket=on -p 12345678
+gnb -n 1001 -I "101.32.178.3/9001" --multi-socket=on -p 12345678
 ```
 
 After the startup is successful, execute ip addr on host A to see the GNB node IP
@@ -202,7 +202,7 @@ After the startup is successful, execute ip addr on host A to see the GNB node I
 Execute with **root** on host B
 
 ```
-gnb -n 1002 -I "120.76.206.113/9001" --multi-socket=on -p 12345678
+gnb -n 1002 -I "101.32.178.3/9001" --multi-socket=on -p 12345678
 ```
 After the startup is successful, execute ip addr on host B to see the GNB node IP
 
@@ -262,6 +262,12 @@ Here are the available `index` nodes provided by volunteers
 
 ```
 i|0|101.32.178.3|9001
+i|0|38.47.98.200|9001
+i|0|216.24.178.4|9001
+i|0|146.235.226.72|9001
+i|0|167.234.212.122|9001
+i|0|172.235.205.5|9001
+i|0|172.104.91.191|9001
 ```
 
 

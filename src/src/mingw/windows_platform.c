@@ -23,7 +23,7 @@
 #include "gnb_exec.h"
 #include "gnb_arg_list.h"
 
-int gnb_get_pid(){
+int gnb_get_pid() {
     int pid;
     pid = GetCurrentProcessId();
     return pid;
@@ -54,7 +54,6 @@ int gnb_exec(char *app_filename, char *current_path, gnb_arg_list_t *gnb_arg_lis
         si.wShowWindow = SW_SHOW;
         creation_flags = CREATE_NEW_CONSOLE;
     }
-
     memset(app_filename_w, 0, PATH_MAX+NAME_MAX);
     MultiByteToWideChar(CP_ACP, 0, app_filename,     -1, app_filename_w,   PATH_MAX+NAME_MAX);
     memset(current_path_w, 0, PATH_MAX+NAME_MAX);
@@ -80,7 +79,6 @@ int gnb_exec(char *app_filename, char *current_path, gnb_arg_list_t *gnb_arg_lis
     }
     return pi.dwProcessId;
 }
-
 
 int gnb_kill(DWORD pid) {
     HANDLE hProcess=OpenProcess(PROCESS_TERMINATE,FALSE, pid);

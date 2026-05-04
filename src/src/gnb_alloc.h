@@ -29,7 +29,7 @@ typedef struct _gnb_heap_t {
     uint32_t alloc_byte;
     uint32_t ralloc_byte;
     gnb_heap_fragment_t *fragment_list[0];
-}gnb_heap_t;
+} gnb_heap_t;
 
 gnb_heap_t* gnb_heap_create(uint32_t max_fragment);
 

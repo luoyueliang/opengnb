@@ -161,8 +161,8 @@ void gnb_add_routenode_ring(gnb_core_t *gnb_core, gnb_hash32_map_t *node_ring_ma
 		node_ring->num = GNB_MAX_NODE_RING;
 		return;
 	}
-	node_ring->nodes[gnb_core->index_node_ring.num] = node;
-	node_ring->cur_index = gnb_core->index_node_ring.num;
+	node_ring->nodes[node_ring->num] = node;
+	node_ring->cur_index = node_ring->num;
 	node_ring->num++;
 }
 
@@ -219,8 +219,13 @@ SIMPLE_FAULT_TOLERANT:
 	return node_ring->nodes[0];
 SIMPLE_LOAD_BALANCE:
 	if ( gnb_core->conf->pf_worker_num > 0 ) {
+		
+		
+		
 		return node_ring->nodes[0];
 	}
+	
+	
 	for ( i=0; i<node_ring->num; i++ ) {
 		node = node_ring->nodes[ node_ring->cur_index ];
 		if ( (GNB_NODE_STATUS_IPV6_PONG | GNB_NODE_STATUS_IPV4_PONG) & node->udp_addr_status ) {
