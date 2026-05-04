@@ -89,11 +89,11 @@ if is_tty; then
   # e.g. "1.6.4" and "ver1.6.1" both compare as "1.6.4" vs "1.6.1"
   if has_sort_V; then
     IFS=$'\n' REMOTE_TAGS=($(printf '%s\n' "${REMOTE_TAGS[@]}" | \
-      awk '{stripped=$0; sub(/^ver?/,"",stripped); print stripped"\t"$0}' | \
+      awk '{stripped=$0; sub(/^ver/,"",stripped); sub(/^v/,"",stripped); print stripped"\t"$0}' | \
       sort -t$'\t' -k1 -V | awk -F'\t' '{print $2}')); unset IFS
   else
     IFS=$'\n' REMOTE_TAGS=($(printf '%s\n' "${REMOTE_TAGS[@]}" | \
-      awk '{stripped=$0; sub(/^ver?/,"",stripped); print stripped"\t"$0}' | \
+      awk '{stripped=$0; sub(/^ver/,"",stripped); sub(/^v/,"",stripped); print stripped"\t"$0}' | \
       sort -t$'\t' -k1 | awk -F'\t' '{print $2}')); unset IFS
   fi
   _len=${#REMOTE_TAGS[@]}
