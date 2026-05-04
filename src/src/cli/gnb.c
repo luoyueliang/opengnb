@@ -33,11 +33,6 @@
 #include <windows.h>
 #endif
 
-#ifndef GNB_SKIP_BUILD_TIME
-#define GNB_BUILD_STRING  "Build Time ["__DATE__","__TIME__"]"
-#else
-#define GNB_BUILD_STRING  "Build Time [Hidden]"
-#endif
 
 gnb_core_t *gnb_core;
 
@@ -267,6 +262,14 @@ void show_description() {
     printf("%s\n", GNB_VERSION_STRING);
     printf("%s\n", GNB_COPYRIGHT_STRING);
     printf("Site: %s\n", GNB_URL_STRING);
+	#if defined(GNB_OPENWRT_BUILD)
+	printf("%s\n","Note:charleschan<hollidgelongsun157@gmail.com>(https://github.com/orgs/opengnb/people/charleschan2006-alias) made great efforts for OpenGNB porting to OpenWRT platform and provides technical supoort.");
+	#endif
+
+	#ifdef _WIN32
+	printf("%s\n","Note:wuqiong(https://www.github.com/wuqiong) made great efforts for OpenGNB supoort wintun Driver and provides technical supoort.");
+	#endif
+
     int idx = 0;
     printf("registered packet filter:");
     while ( NULL != gnb_pf_mods[idx] ) {
