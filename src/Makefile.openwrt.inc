@@ -103,3 +103,35 @@ GNB_CTL_OBJS =                                   \
 
 GNB_OBJS    += ./src/gnb_mod_register.o
 GNB_ES_OBJS += ./src/es/gnb_es_platform.o
+
+MINIUPNP_OBJS =                                  \
+       ./libs/miniupnpc/miniwget.o               \
+       ./libs/miniupnpc/minixml.o                \
+       ./libs/miniupnpc/igd_desc_parse.o         \
+       ./libs/miniupnpc/minisoap.o               \
+       ./libs/miniupnpc/miniupnpc.o              \
+       ./libs/miniupnpc/upnpreplyparse.o         \
+       ./libs/miniupnpc/upnpcommands.o           \
+       ./libs/miniupnpc/upnperrors.o             \
+       ./libs/miniupnpc/connecthostport.o        \
+       ./libs/miniupnpc/portlistingparse.o       \
+       ./libs/miniupnpc/receivedata.o            \
+       ./libs/miniupnpc/upnpdev.o                \
+       ./libs/miniupnpc/addr_is_reserved.o       \
+       ./libs/miniupnpc/minissdpc.o
+
+
+LIBNATPMP_OBJS =                                 \
+       ./libs/libnatpmp/natpmp.o                 \
+       ./libs/libnatpmp/getgateway.o             \
+       ./libs/libnatpmp/wingettimeofday.o
+
+
+ZLIB_OBJS =                                      \
+       ./libs/zlib/adler32.o                     \
+       ./libs/zlib/deflate.o                     \
+       ./libs/zlib/inffast.o                     \
+       ./libs/zlib/inflate.o                     \
+       ./libs/zlib/inftrees.o                    \
+       ./libs/zlib/trees.o                       \
+       ./libs/zlib/zutil.o
