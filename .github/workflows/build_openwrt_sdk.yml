@@ -32,7 +32,8 @@ jobs:
           - { arch: mipsel-sf, sdk_target: ramips/mt7620,    sdk_name: ramips-mt7620,    sdk_libc: musl     }   # soft-float (MT7620 等无 FPU 设备)
           - { arch: mips,      sdk_target: ath79/generic,    sdk_name: ath79-generic,    sdk_libc: musl     }   # soft-float (AR71xx/AR9xxx 无 FPU)
           - { arch: armv7,     sdk_target: bcm27xx/bcm2709,  sdk_name: bcm27xx-bcm2709,  sdk_libc: musl_eabi }  # hard-float
-          - { arch: armv7-sf,  sdk_target: mxs/generic,      sdk_name: mxs-generic,      sdk_libc: musl     }   # soft-float (i.MX28 等无 VFP 设备)
+          # armv7-sf (mxs/generic) 暂时注释：i.MX28 等无 VFP 设备较罕见，且 OpenWrt 24.10 可能已放弃该 target
+          # - { arch: armv7-sf, sdk_target: mxs/generic, sdk_name: mxs-generic, sdk_libc: musl }
 
     steps:
       - name: Checkout source
