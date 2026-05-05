@@ -26,11 +26,13 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { arch: arm64,  sdk_target: armsr/armv8,      sdk_name: armsr-armv8,      sdk_libc: musl }
-          - { arch: amd64,  sdk_target: x86/64,            sdk_name: x86-64,            sdk_libc: musl }
-          - { arch: mipsel, sdk_target: ramips/mt7621,     sdk_name: ramips-mt7621,     sdk_libc: musl }
-          - { arch: mips,   sdk_target: ath79/generic,     sdk_name: ath79-generic,     sdk_libc: musl }
-          - { arch: armv7,  sdk_target: bcm27xx/bcm2709,   sdk_name: bcm27xx-bcm2709,   sdk_libc: musl_eabi }
+          - { arch: arm64,     sdk_target: armsr/armv8,      sdk_name: armsr-armv8,      sdk_libc: musl     }
+          - { arch: amd64,     sdk_target: x86/64,           sdk_name: x86-64,           sdk_libc: musl     }
+          - { arch: mipsel,    sdk_target: ramips/mt7621,    sdk_name: ramips-mt7621,    sdk_libc: musl     }   # hard-float
+          - { arch: mipsel-sf, sdk_target: ramips/mt7620,    sdk_name: ramips-mt7620,    sdk_libc: musl     }   # soft-float (MT7620 等无 FPU 设备)
+          - { arch: mips,      sdk_target: ath79/generic,    sdk_name: ath79-generic,    sdk_libc: musl     }   # soft-float (AR71xx/AR9xxx 无 FPU)
+          - { arch: armv7,     sdk_target: bcm27xx/bcm2709,  sdk_name: bcm27xx-bcm2709,  sdk_libc: musl_eabi }  # hard-float
+          - { arch: armv7-sf,  sdk_target: mxs/generic,      sdk_name: mxs-generic,      sdk_libc: musl     }   # soft-float (i.MX28 等无 VFP 设备)
 
     steps:
       - name: Checkout source
@@ -115,19 +117,11 @@ jobs:
           echo "tag:         $TAG"
           echo ""
 
-          # 使用临时 Makefile，追加 -static（与本地 build_common.sh 逻辑一致）
-          TEMP_MF="src/Makefile.openwrt.sdk.tmp"
-          sed \
-            -e 's|^\(CLI_LDFLAGS=.*\)$|\1 -static|' \
-            -e 's|^\(GNB_ES_LDFLAGS=.*\)$|\1 -static|' \
-            src/Makefile.openwrt > "$TEMP_MF"
-
-          make -C src -f Makefile.openwrt.sdk.tmp clean
-          make -C src -f Makefile.openwrt.sdk.tmp install \
+          # SDK 编译：不加 -static，OpenWrt 设备自带 musl 运行时，动态链接即可
+          make -C src -f Makefile.openwrt clean
+          make -C src -f Makefile.openwrt install \
             CC="$CC" \
             DEBUG=0
-
-          rm -f "$TEMP_MF"
 
           if [ -d src/bin ]; then
             mv src/bin/* "$OUT_DIR/"

@@ -31,17 +31,17 @@ jobs:
           - { os: linux, platform: linux, arch: mips64,       makefile: Makefile.linux }
           - { os: linux, platform: linux, arch: mips64el,     makefile: Makefile.linux }
           - { os: linux, platform: linux, arch: riscv64,      makefile: Makefile.linux }
-          # OpenWrt
-          - { os: openwrt, platform: linux, arch: amd64,         makefile: Makefile.openwrt }
-          - { os: openwrt, platform: linux, arch: arm64,         makefile: Makefile.openwrt }
-          - { os: openwrt, platform: linux, arch: armv7-softfp,  makefile: Makefile.openwrt }
-          - { os: openwrt, platform: linux, arch: armv7-hardfp,  makefile: Makefile.openwrt }
-          - { os: openwrt, platform: linux, arch: mips,          makefile: Makefile.openwrt }
-          - { os: openwrt, platform: linux, arch: mipsel,        makefile: Makefile.openwrt }
-          - { os: openwrt, platform: linux, arch: mipsel-muslsf, makefile: Makefile.openwrt }
-          - { os: openwrt, platform: linux, arch: mips64,        makefile: Makefile.openwrt }
-          - { os: openwrt, platform: linux, arch: mips64el,      makefile: Makefile.openwrt }
-          - { os: openwrt, platform: linux, arch: riscv64,       makefile: Makefile.openwrt }
+          # OpenWrt — 已由 build_openwrt_sdk.yml (官方 SDK 24.10) 接管，此处注释
+          # - { os: openwrt, platform: linux, arch: amd64,         makefile: Makefile.openwrt }
+          # - { os: openwrt, platform: linux, arch: arm64,         makefile: Makefile.openwrt }
+          # - { os: openwrt, platform: linux, arch: armv7-softfp,  makefile: Makefile.openwrt }
+          # - { os: openwrt, platform: linux, arch: armv7-hardfp,  makefile: Makefile.openwrt }
+          # - { os: openwrt, platform: linux, arch: mips,          makefile: Makefile.openwrt }
+          # - { os: openwrt, platform: linux, arch: mipsel,        makefile: Makefile.openwrt }
+          # - { os: openwrt, platform: linux, arch: mipsel-muslsf, makefile: Makefile.openwrt }
+          # - { os: openwrt, platform: linux, arch: mips64,        makefile: Makefile.openwrt }
+          # - { os: openwrt, platform: linux, arch: mips64el,      makefile: Makefile.openwrt }
+          # - { os: openwrt, platform: linux, arch: riscv64,       makefile: Makefile.openwrt }
 
     steps:
       - name: Checkout source
