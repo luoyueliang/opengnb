@@ -36,10 +36,15 @@ jobs:
           # - { arch: armv7-sf, sdk_target: mxs/generic, sdk_name: mxs-generic, sdk_libc: musl }
 
     steps:
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+            /opt/hostedtoolcache/CodeQL /usr/local/share/boost \
+            "$AGENT_TOOLSDIRECTORY" || true
+          df -h
+
       - name: Checkout source
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Extract tag
         id: tag
@@ -106,7 +111,7 @@ jobs:
         run: |
           set -euo pipefail
           TAG="${{ steps.tag.outputs.tag }}"
-          OUT_DIR="$GITHUB_WORKSPACE/.out/${TAG}/openwrt-sdk/${{ matrix.arch }}/bin"
+          OUT_DIR="$GITHUB_WORKSPACE/.out/${TAG}/openwrt/${{ matrix.arch }}/bin"
           PKG_DIR="$GITHUB_WORKSPACE/.pkg/${TAG}"
           mkdir -p "$OUT_DIR" "$PKG_DIR"
 
@@ -135,7 +140,7 @@ jobs:
 
       - name: Verify binaries
         run: |
-          OUT_DIR="$GITHUB_WORKSPACE/.out/${{ steps.tag.outputs.tag }}/openwrt-sdk/${{ matrix.arch }}/bin"
+          OUT_DIR="$GITHUB_WORKSPACE/.out/${{ steps.tag.outputs.tag }}/openwrt/${{ matrix.arch }}/bin"
           missing=0
           for f in gnb gnb_ctl gnb_es gnb_crypto; do
             if [ -f "$OUT_DIR/$f" ]; then
@@ -152,17 +157,24 @@ jobs:
       - name: Package
         run: |
           TAG="${{ steps.tag.outputs.tag }}"
-          OUT_PARENT="$GITHUB_WORKSPACE/.out/${TAG}/openwrt-sdk/${{ matrix.arch }}"
+          OUT_PARENT="$GITHUB_WORKSPACE/.out/${TAG}/openwrt/${{ matrix.arch }}"
           PKG_DIR="$GITHUB_WORKSPACE/.pkg/${TAG}"
-          ARCHIVE="${PROJECT}_openwrt-sdk_${{ matrix.arch }}_${TAG}.tgz"
+          ARCHIVE="${PROJECT}_openwrt_${{ matrix.arch }}_${TAG}.tgz"
           tar -czvf "$ARCHIVE" -C "$OUT_PARENT" bin
           mv "$ARCHIVE" "$PKG_DIR/"
           echo "Packaged: $PKG_DIR/$ARCHIVE"
 
+      - name: Cleanup build output
+        if: always()
+        run: |
+          rm -rf "$GITHUB_WORKSPACE/.out" "$GITHUB_WORKSPACE/src/bin" || true
+          make -C src -f Makefile.openwrt clean 2>/dev/null || true
+          df -h
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: gnb-openwrt-sdk-${{ matrix.arch }}
+          name: gnb-openwrt-${{ matrix.arch }}
           path: .pkg/${{ steps.tag.outputs.tag }}/*
 
   publish:
@@ -212,7 +224,7 @@ jobs:
       - name: Upload checksums artifact
         uses: actions/upload-artifact@v4
         with:
-          name: checksums-openwrt-sdk
+          name: checksums-openwrt
           path: .release/flat/checksums.txt
 
       - name: Upload to GitHub Release

@@ -44,11 +44,15 @@ jobs:
           # - { os: openwrt, platform: linux, arch: riscv64,       makefile: Makefile.openwrt }
 
     steps:
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+            /opt/hostedtoolcache/CodeQL /usr/local/share/boost \
+            "$AGENT_TOOLSDIRECTORY" || true
+          df -h
+
       - name: Checkout source
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.ref }}
-          fetch-depth: 0
 
       - name: Extract tag
         id: tag
@@ -452,6 +456,13 @@ jobs:
           ARCHIVE="${PROJECT}_${{ matrix.os }}_${{ matrix.arch }}_${{ steps.tag.outputs.tag }}.tgz"
           tar -czvf "$ARCHIVE" -C "$OUT_PARENT" bin
           mv "$ARCHIVE" "$PKG_DIR/"
+
+      - name: Cleanup build output
+        if: always()
+        run: |
+          rm -rf "$GITHUB_WORKSPACE/.out" "$GITHUB_WORKSPACE/src/bin" || true
+          make -C src -f "${{ matrix.makefile }}" clean 2>/dev/null || true
+          df -h
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

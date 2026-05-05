@@ -24,11 +24,14 @@ jobs:
           - { os: darwin, platform: darwin, arch: arm64, makefile: Makefile.Darwin }
 
     steps:
+      - name: Free disk space
+        run: |
+          # macOS runner 空间相对充裕，主要清理 Xcode 旧模拟器缓存
+          sudo rm -rf /Library/Developer/CoreSimulator/Profiles/Runtimes || true
+          df -h
+
       - name: Checkout source
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.ref }}
-          fetch-depth: 0
 
       - name: Extract tag
         id: tag
@@ -86,6 +89,13 @@ jobs:
           ARCHIVE="${PROJECT}_${{ matrix.os }}_${{ matrix.arch }}_${{ steps.tag.outputs.tag }}.tgz"
           tar -czvf "$ARCHIVE" -C "$OUT_PARENT" bin
           mv "$ARCHIVE" "$PKG_DIR/"
+
+      - name: Cleanup build output
+        if: always()
+        run: |
+          rm -rf "$GITHUB_WORKSPACE/.out" "$GITHUB_WORKSPACE/src/bin" || true
+          make -C src -f "${{ matrix.makefile }}" clean 2>/dev/null || true
+          df -h
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
