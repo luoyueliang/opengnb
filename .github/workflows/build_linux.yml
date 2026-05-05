@@ -67,7 +67,7 @@ jobs:
 
       - name: Cache OpenWrt musl toolchains
         if: matrix.os == 'openwrt'
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: /tmp/musl-cross-${{ matrix.arch }}
           key: openwrt-musl-${{ matrix.arch }}-${{ runner.os }}-v1
