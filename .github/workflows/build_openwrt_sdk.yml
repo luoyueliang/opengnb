@@ -180,10 +180,33 @@ jobs:
           find .release -type f -name "*.tgz" -exec mv {} .release/flat/ \;
           ls -lh .release/flat/
 
-      - name: Generate checksums
+      - name: Generate and merge checksums
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cd .release/flat
-          sha256sum $(ls | grep -v '^checksums.txt$') > checksums.txt
+          # 生成本批次校验
+          sha256sum *.tgz > new_checksums.txt
+
+          # 尝试从 Release 下载已有 checksums.txt，合并（同文件名替换，新增追加）
+          TAG="${{ github.ref_name }}"
+          mkdir -p .existing
+          gh release download "$TAG" -p "checksums.txt" -D .existing/ \
+            --repo "${GITHUB_REPOSITORY}" 2>/dev/null || true
+
+          if [ -f .existing/checksums.txt ]; then
+            new_files=$(awk '{print $2}' new_checksums.txt)
+            while IFS= read -r line; do
+              fname=$(echo "$line" | awk '{print $2}')
+              if ! printf '%s\n' $new_files | grep -qxF "$fname"; then
+                echo "$line"
+              fi
+            done < .existing/checksums.txt > kept.txt
+            sort -k2 kept.txt new_checksums.txt > checksums.txt
+          else
+            sort -k2 new_checksums.txt > checksums.txt
+          fi
+          echo "=== Final checksums.txt ==="
           cat checksums.txt
 
       - name: Upload checksums artifact

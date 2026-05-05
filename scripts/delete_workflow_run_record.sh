@@ -8,8 +8,8 @@ workflow_ids=$(gh workflow list --json id -q '.[].id')
 for wf_id in $workflow_ids; do
     echo "Processing workflow ID: $wf_id"
 
-    # 获取该 workflow 所有运行记录（只取 id 和 status）
-    runs=$(gh run list --workflow "$wf_id" --json databaseId,status)
+    # 获取该 workflow 所有运行记录（只取 id 和 status，最多 1000 条）
+    runs=$(gh run list --workflow "$wf_id" --json databaseId,status --limit 1000)
 
     # 遍历所有 runs
     echo "$runs" | jq -c '.[]' | while read -r run; do
