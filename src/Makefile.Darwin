@@ -1,4 +1,4 @@
-CFLAGS=-O2 -I./src  -I./libs -I./libs/miniupnpc -I./libs/libnatpmp -I./libs/zlib -D NO_GZIP=1 -Wno-deprecated-non-prototype
+CFLAGS=-O2 -I./src  -I./libs -I./libs/miniupnpc -I./libs/libnatpmp -I./libs/zlib -D NO_GZIP=1 -Wno-deprecated-non-prototype -Wno-macro-redefined
 
 #-D Z_SOLO=0
 CLI_LDFLAGS=-L/usr/lib -pthread

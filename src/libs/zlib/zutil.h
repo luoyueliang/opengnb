@@ -158,9 +158,7 @@ extern z_const char * const z_errmsg[10]; /* indexed by 2-zlib_error */
 #endif
 
 #ifdef __APPLE__
-#  ifndef OS_CODE
-#    define OS_CODE 19
-#  endif
+#  define OS_CODE 19
 #endif
 
 #if defined(__BORLANDC__) && !defined(MSDOS)
