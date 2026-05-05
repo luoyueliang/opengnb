@@ -1,0 +1,221 @@
+name: Build GNB For OpenWrt (SDK 24.10 - POC)
+
+# 使用官方 OpenWrt SDK 24.10 编译，对应本地 build_openwrt.sh 的逻辑
+# 优势：GCC 13.3.0 + musl 1.2.5，与 OpenWrt 官方包使用同一工具链，兼容性最好
+# 当前为 POC 阶段，先验证 arm64，成功后可扩展其他架构
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*.*.*"
+
+env:
+  PROJECT: gnb
+  SDK_VERSION: "24.10.0"
+  SDK_GCC: "13.3.0"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # POC: 先验证 arm64，成功后可逐步添加以下架构
+          - { arch: arm64,  sdk_target: armsr/armv8,   sdk_name: armsr-armv8,   sdk_libc: musl }
+          # - { arch: amd64,  sdk_target: x86/64,        sdk_name: x86-64,        sdk_libc: musl }
+          # - { arch: mipsel, sdk_target: ramips/mt7621, sdk_name: ramips-mt7621, sdk_libc: musl }
+          # - { arch: mips,   sdk_target: ath79/generic, sdk_name: ath79-generic, sdk_libc: musl }
+          # - { arch: armv7,  sdk_target: bcm27xx/bcm2709, sdk_name: bcm27xx-bcm2709, sdk_libc: musl_eabi }
+          # - { arch: riscv64, sdk_target: starfive/visionfive2, sdk_name: starfive-visionfive2, sdk_libc: musl }
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract tag
+        id: tag
+        run: echo "tag=${GITHUB_REF##*/}" >> "$GITHUB_OUTPUT"
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y build-essential wget zstd tar file
+
+      - name: Cache OpenWrt SDK ${{ env.SDK_VERSION }} / ${{ matrix.arch }}
+        id: sdk_cache
+        uses: actions/cache@v4
+        with:
+          path: /opt/openwrt-sdk/${{ env.SDK_VERSION }}/${{ matrix.sdk_name }}
+          key: openwrt-sdk-${{ env.SDK_VERSION }}-${{ matrix.sdk_name }}-gcc${{ env.SDK_GCC }}-v1
+
+      - name: Download and extract OpenWrt SDK
+        if: steps.sdk_cache.outputs.cache-hit != 'true'
+        run: |
+          SDK_FILE="openwrt-sdk-${{ env.SDK_VERSION }}-${{ matrix.sdk_name }}_gcc-${{ env.SDK_GCC }}_${{ matrix.sdk_libc }}.Linux-x86_64.tar.zst"
+          SDK_URL="https://downloads.openwrt.org/releases/${{ env.SDK_VERSION }}/targets/${{ matrix.sdk_target }}/${SDK_FILE}"
+          echo "Downloading SDK: $SDK_URL"
+          wget -q --show-progress -O "/tmp/${SDK_FILE}" "$SDK_URL"
+          mkdir -p "/opt/openwrt-sdk/${{ env.SDK_VERSION }}"
+          cd "/opt/openwrt-sdk/${{ env.SDK_VERSION }}"
+          tar --use-compress-program=unzstd -xf "/tmp/${SDK_FILE}"
+          # 将解压出的目录统一重命名为 sdk_name，方便后续步骤定位
+          EXTRACTED=$(ls -d openwrt-sdk-* 2>/dev/null | head -1)
+          if [ -z "$EXTRACTED" ]; then
+            echo "ERROR: SDK extraction failed, no openwrt-sdk-* directory found"
+            ls -la
+            exit 1
+          fi
+          mv "$EXTRACTED" "${{ matrix.sdk_name }}"
+          rm -f "/tmp/${SDK_FILE}"
+          echo "SDK ready at: /opt/openwrt-sdk/${{ env.SDK_VERSION }}/${{ matrix.sdk_name }}"
+
+      - name: Find SDK toolchain GCC
+        id: toolchain
+        run: |
+          SDK_DIR="/opt/openwrt-sdk/${{ env.SDK_VERSION }}/${{ matrix.sdk_name }}"
+          echo "SDK_DIR: $SDK_DIR"
+          echo "Toolchain dirs:"
+          ls "$SDK_DIR/staging_dir/" | grep toolchain || echo "(none)"
+
+          # 找 *-openwrt-linux-*-gcc（排除 -cc 链接、g++ 等）
+          CC=$(find "$SDK_DIR/staging_dir" -path "*/bin/*-openwrt-linux-*gcc" ! -name "*g++*" ! -name "*-cc" 2>/dev/null | head -1)
+          if [ -z "$CC" ]; then
+            echo "ERROR: Could not find GCC binary in SDK staging_dir"
+            find "$SDK_DIR/staging_dir" -name "*gcc*" 2>/dev/null | head -20
+            exit 1
+          fi
+          echo "Found CC: $CC"
+          $CC --version | head -1
+
+          STAGING_DIR="$SDK_DIR/staging_dir"
+          echo "cc=$CC" >> "$GITHUB_OUTPUT"
+          echo "staging_dir=$STAGING_DIR" >> "$GITHUB_OUTPUT"
+
+      - name: Build
+        env:
+          STAGING_DIR: ${{ steps.toolchain.outputs.staging_dir }}
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.tag.outputs.tag }}"
+          OUT_DIR="$GITHUB_WORKSPACE/.out/${TAG}/openwrt-sdk/${{ matrix.arch }}/bin"
+          PKG_DIR="$GITHUB_WORKSPACE/.pkg/${TAG}"
+          mkdir -p "$OUT_DIR" "$PKG_DIR"
+
+          CC="${{ steps.toolchain.outputs.cc }}"
+          echo "=== Build info ==="
+          echo "CC:          $CC"
+          echo "STAGING_DIR: $STAGING_DIR"
+          echo "arch:        ${{ matrix.arch }}"
+          echo "tag:         $TAG"
+          echo ""
+
+          # 使用临时 Makefile，追加 -static（与本地 build_common.sh 逻辑一致）
+          TEMP_MF="src/Makefile.openwrt.sdk.tmp"
+          sed \
+            -e 's|^\(CLI_LDFLAGS=.*\)$|\1 -static|' \
+            -e 's|^\(GNB_ES_LDFLAGS=.*\)$|\1 -static|' \
+            src/Makefile.openwrt > "$TEMP_MF"
+
+          make -C src -f Makefile.openwrt.sdk.tmp clean
+          make -C src -f Makefile.openwrt.sdk.tmp install \
+            CC="$CC" \
+            DEBUG=0
+
+          rm -f "$TEMP_MF"
+
+          if [ -d src/bin ]; then
+            mv src/bin/* "$OUT_DIR/"
+          else
+            echo "ERROR: src/bin not found after build"
+            exit 1
+          fi
+          echo "=== Build complete, output: ==="
+          ls -lh "$OUT_DIR/"
+
+      - name: Verify binaries
+        run: |
+          OUT_DIR="$GITHUB_WORKSPACE/.out/${{ steps.tag.outputs.tag }}/openwrt-sdk/${{ matrix.arch }}/bin"
+          all_ok=true
+          for f in gnb gnb_ctl gnb_es gnb_crypto; do
+            if [ -f "$OUT_DIR/$f" ]; then
+              info=$(file -b "$OUT_DIR/$f")
+              size=$(stat -c%s "$OUT_DIR/$f")
+              echo "$f: $info (${size} bytes)"
+              if echo "$info" | grep -qi "statically linked\|static-pie linked"; then
+                echo "  ✓ statically linked"
+              else
+                echo "  ✗ NOT statically linked: $info"
+                all_ok=false
+              fi
+            else
+              echo "ERROR: $f not found in $OUT_DIR"
+              all_ok=false
+            fi
+          done
+          $all_ok || exit 1
+
+      - name: Package
+        run: |
+          TAG="${{ steps.tag.outputs.tag }}"
+          OUT_PARENT="$GITHUB_WORKSPACE/.out/${TAG}/openwrt-sdk/${{ matrix.arch }}"
+          PKG_DIR="$GITHUB_WORKSPACE/.pkg/${TAG}"
+          ARCHIVE="${PROJECT}_openwrt-sdk_${{ matrix.arch }}_${TAG}.tgz"
+          tar -czvf "$ARCHIVE" -C "$OUT_PARENT" bin
+          mv "$ARCHIVE" "$PKG_DIR/"
+          echo "Packaged: $PKG_DIR/$ARCHIVE"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: gnb-openwrt-sdk-${{ matrix.arch }}
+          path: .pkg/${{ steps.tag.outputs.tag }}/*
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: .release/
+
+      - name: Flatten artifacts
+        run: |
+          mkdir -p .release/flat
+          find .release -type f -name "*.tgz" -exec mv {} .release/flat/ \;
+          ls -lh .release/flat/
+
+      - name: Generate checksums
+        run: |
+          cd .release/flat
+          sha256sum $(ls | grep -v '^checksums.txt$') > checksums.txt
+          cat checksums.txt
+
+      - name: Upload checksums artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: checksums-openwrt-sdk
+          path: .release/flat/checksums.txt
+
+      - name: Upload to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="${{ github.ref_name }}"
+          FILES=(.release/flat/*)
+          echo "Uploading to release $TAG: ${FILES[*]}"
+          gh release upload "$TAG" "${FILES[@]}" --clobber --repo "${GITHUB_REPOSITORY}" || {
+            echo "Upload failed, attempting to create release first..."
+            gh release create "$TAG" --title "Release $TAG" --notes "OpenWrt SDK build" || true
+            gh release upload "$TAG" "${FILES[@]}" --clobber --repo "${GITHUB_REPOSITORY}"
+          }
