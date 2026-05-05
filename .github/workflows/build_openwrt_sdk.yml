@@ -1,8 +1,8 @@
-name: Build GNB For OpenWrt (SDK 24.10 - POC)
+name: Build GNB For OpenWrt (SDK 24.10)
 
 # 使用官方 OpenWrt SDK 24.10 编译，对应本地 build_openwrt.sh 的逻辑
 # 优势：GCC 13.3.0 + musl 1.2.5，与 OpenWrt 官方包使用同一工具链，兼容性最好
-# 当前为 POC 阶段，先验证 arm64，成功后可扩展其他架构
+# 产物为动态链接 musl libc，OpenWrt 设备上有 musl 运行时，可直接运行
 
 on:
   workflow_dispatch:
@@ -26,13 +26,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # POC: 先验证 arm64，成功后可逐步添加以下架构
-          - { arch: arm64,  sdk_target: armsr/armv8,   sdk_name: armsr-armv8,   sdk_libc: musl }
-          # - { arch: amd64,  sdk_target: x86/64,        sdk_name: x86-64,        sdk_libc: musl }
-          # - { arch: mipsel, sdk_target: ramips/mt7621, sdk_name: ramips-mt7621, sdk_libc: musl }
-          # - { arch: mips,   sdk_target: ath79/generic, sdk_name: ath79-generic, sdk_libc: musl }
-          # - { arch: armv7,  sdk_target: bcm27xx/bcm2709, sdk_name: bcm27xx-bcm2709, sdk_libc: musl_eabi }
-          # - { arch: riscv64, sdk_target: starfive/visionfive2, sdk_name: starfive-visionfive2, sdk_libc: musl }
+          - { arch: arm64,  sdk_target: armsr/armv8,      sdk_name: armsr-armv8,      sdk_libc: musl }
+          - { arch: amd64,  sdk_target: x86/64,            sdk_name: x86-64,            sdk_libc: musl }
+          - { arch: mipsel, sdk_target: ramips/mt7621,     sdk_name: ramips-mt7621,     sdk_libc: musl }
+          - { arch: mips,   sdk_target: ath79/generic,     sdk_name: ath79-generic,     sdk_libc: musl }
+          - { arch: armv7,  sdk_target: bcm27xx/bcm2709,   sdk_name: bcm27xx-bcm2709,   sdk_libc: musl_eabi }
 
     steps:
       - name: Checkout source
@@ -143,24 +141,18 @@ jobs:
       - name: Verify binaries
         run: |
           OUT_DIR="$GITHUB_WORKSPACE/.out/${{ steps.tag.outputs.tag }}/openwrt-sdk/${{ matrix.arch }}/bin"
-          all_ok=true
+          missing=0
           for f in gnb gnb_ctl gnb_es gnb_crypto; do
             if [ -f "$OUT_DIR/$f" ]; then
               info=$(file -b "$OUT_DIR/$f")
               size=$(stat -c%s "$OUT_DIR/$f")
               echo "$f: $info (${size} bytes)"
-              if echo "$info" | grep -qi "statically linked\|static-pie linked"; then
-                echo "  ✓ statically linked"
-              else
-                echo "  ✗ NOT statically linked: $info"
-                all_ok=false
-              fi
             else
               echo "ERROR: $f not found in $OUT_DIR"
-              all_ok=false
+              missing=1
             fi
           done
-          $all_ok || exit 1
+          [ $missing -eq 0 ] || exit 1
 
       - name: Package
         run: |
