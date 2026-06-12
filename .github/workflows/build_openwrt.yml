@@ -256,14 +256,19 @@ jobs:
           [ $missing -eq 0 ] || exit 1
 
       - name: Package
-        # Only package from primary SDK (24.10) to avoid duplicate artifacts
-        if: matrix.sdk.version == '24.10.7' && steps.check.outputs.skip != 'true'
+        if: steps.check.outputs.skip != 'true'
         run: |
           TAG="${{ steps.tag.outputs.tag }}"
           SDK_VERSION="${{ matrix.sdk.version }}"
           OUT_PARENT="$GITHUB_WORKSPACE/.out/${TAG}/openwrt/${{ matrix.arch.name }}-${SDK_VERSION}"
           PKG_DIR="$GITHUB_WORKSPACE/.pkg/${TAG}"
-          ARCHIVE="${PROJECT}_openwrt_${{ matrix.arch.name }}_${TAG}.tgz"
+          # Primary SDK (24.10): no version in name for backward compat
+          # Other SDKs: include SDK version to avoid overwrites
+          if [ "$SDK_VERSION" = "24.10.7" ]; then
+            ARCHIVE="${PROJECT}_openwrt_${{ matrix.arch.name }}_${TAG}.tgz"
+          else
+            ARCHIVE="${PROJECT}_openwrt_${{ matrix.arch.name }}_${SDK_VERSION}_${TAG}.tgz"
+          fi
           tar -czvf "$ARCHIVE" -C "$OUT_PARENT" bin
           mv "$ARCHIVE" "$PKG_DIR/"
           echo "Packaged: $PKG_DIR/$ARCHIVE"
@@ -276,11 +281,10 @@ jobs:
           df -h
 
       - name: Upload artifacts
-        # Only upload from primary SDK (24.10)
-        if: matrix.sdk.version == '24.10.7' && steps.check.outputs.skip != 'true'
+        if: steps.check.outputs.skip != 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: gnb-openwrt-${{ matrix.arch.name }}
+          name: gnb-openwrt-${{ matrix.arch.name }}-${{ matrix.sdk.version }}
           path: .pkg/${{ steps.tag.outputs.tag }}/*
 
   publish:
