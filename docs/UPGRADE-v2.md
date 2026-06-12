@@ -10,7 +10,7 @@
 | 项目 | 值 |
 |------|------|
 | 语言 | C |
-| 版本 | v1.6.0.a (target.json) |
+| 版本 | v1.6.5 (target.json) |
 | 构建 | per-OS Makefile + GitHub Actions CI |
 | 产品名 | `gnb` |
 
