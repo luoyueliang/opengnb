@@ -183,9 +183,12 @@ jobs:
           echo "tag:         $TAG"
 
           # SDK build: dynamic linking against musl (OpenWrt has musl runtime)
+          # Note: Makefile.openwrt has no CFLAGS with include paths (unlike Makefile.linux),
+          # so we must pass them here. This is an upstream issue in v1.6.5.
           make -C src -f Makefile.openwrt clean
           make -C src -f Makefile.openwrt install \
             CC="$CC" \
+            CFLAGS="-I./src -I./libs -DGNB_OPENWRT_BUILD=1" \
             DEBUG=0
 
           if [ -d src/bin ]; then
