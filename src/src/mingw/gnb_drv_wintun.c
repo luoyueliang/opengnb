@@ -51,9 +51,6 @@
 #define WINTUN_POOL_NAME L"GNB"
 #define WINTUN_RING_CAPACITY 0x400000 /* 4 MiB */
 
-
-
-
 static WINTUN_CREATE_ADAPTER_FUNC *WintunCreateAdapter;
 static WINTUN_CLOSE_ADAPTER_FUNC *WintunCloseAdapter;
 static WINTUN_OPEN_ADAPTER_FUNC *WintunOpenAdapter;
@@ -98,8 +95,6 @@ InitializeWintun(gnb_core_t *gnb_core){
     return Wintun;
 }
 
-
-
 typedef struct _gnb_core_wintun_ctx_t{
     char if_name[PATH_MAX];
     HMODULE drv_module;
@@ -113,15 +108,11 @@ typedef struct _gnb_core_wintun_ctx_t{
 
 }gnb_core_wintun_ctx_t;
 
-
 static int close_tun_wintun(gnb_core_t *gnb_core);
 static int open_tun_wintun(gnb_core_t *gnb_core);
 static int release_tun_wintun(gnb_core_t *gnb_core);
 
-
 #define MAX_KEY_LENGTH 255
-
-
 
 int init_tun_wintun(gnb_core_t *gnb_core){
 
@@ -130,7 +121,7 @@ int init_tun_wintun(gnb_core_t *gnb_core){
 
     tun_wintun_ctx->skip_if_script = 0;
 
-    GNB_LOG3(gnb_core->log, GNB_LOG_ID_CORE, "Notes: gnb_drv_wintun.c is a Third party module; technical support:  https://www.github.com/wuqiong\n");
+    GNB_LOG3(gnb_core->log, GNB_LOG_ID_CORE, "Note:gnb_drv_wintun.c is a Third party module; technical support: https://www.github.com/wuqiong\n");
 
     HMODULE module = InitializeWintun(gnb_core);
 
@@ -159,7 +150,6 @@ int init_tun_wintun(gnb_core_t *gnb_core){
 
     snprintf(tun_wintun_ctx->if_name, PATH_MAX, "%s", "P2PNet");
 
-
     if ( tun_wintun_ctx->if_name && 0 != strncmp(gnb_core->ifname,tun_wintun_ctx->if_name,256) ) {
         snprintf(gnb_core->ifname, 256, "%s", tun_wintun_ctx->if_name);
     }
@@ -174,6 +164,11 @@ int init_tun_wintun(gnb_core_t *gnb_core){
 }
 
 
+//Add
+static ULONG get_if_id(gnb_core_t *gnb_core) {
+
+	return 0l;
+}
 
 
 
@@ -207,7 +202,6 @@ static void if_up(gnb_core_t *gnb_core){
 
 }
 
-
 static void if_down(gnb_core_t *gnb_core){
 
     gnb_core_wintun_ctx_t *tun_wintun_ctx = gnb_core->platform_ctx;
@@ -236,7 +230,6 @@ static void if_down(gnb_core_t *gnb_core){
 
 }
 
-
 static int ntod(uint32_t mask){
     int i, n = 0;
     int bits = sizeof(uint32_t) * 8;
@@ -248,7 +241,6 @@ static int ntod(uint32_t mask){
 
     return n;
 }
-
 
 static int set_addr4(gnb_core_t *gnb_core){
 
@@ -287,7 +279,6 @@ static int set_addr4(gnb_core_t *gnb_core){
 
 }
 
-
 static int set_addr6(gnb_core_t *gnb_core){
 
     gnb_core_wintun_ctx_t *tun_wintun_ctx = gnb_core->platform_ctx;
@@ -323,7 +314,6 @@ static int set_addr6(gnb_core_t *gnb_core){
     return 0;
 
 }
-
 
 static int open_tun_wintun(gnb_core_t *gnb_core){
 
