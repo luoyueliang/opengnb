@@ -8,8 +8,6 @@ on:
 
 env:
   PROJECT: gnb
-  BASE_URL: "https://download.mynet.club/gnb"
-
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
@@ -101,13 +99,36 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload to Download Server
-        run: |
-          echo "${DOWNLOAD_SSH_KEY}" > id_rsa
-          chmod 600 id_rsa
-          rsync -avz -e "ssh -o StrictHostKeyChecking=no -i id_rsa" ./artifacts/ ${DOWNLOAD_SSH_USER}@${DOWNLOAD_SSH_HOST}:${DOWNLOAD_SSH_REMOTE_DIR}/
+      - name: Upload to CTL release API
+        if: startsWith(github.ref, 'refs/tags/')
         env:
-          DOWNLOAD_SSH_HOST: ${{ secrets.DOWNLOAD_SSH_HOST }}
-          DOWNLOAD_SSH_USER: ${{ secrets.DOWNLOAD_SSH_USER }}
-          DOWNLOAD_SSH_KEY: ${{ secrets.DOWNLOAD_SSH_KEY }}
-          DOWNLOAD_SSH_REMOTE_DIR: ${{ secrets.DOWNLOAD_SSH_REMOTE_DIR }}
+          CTL_TOKEN: ${{ secrets.CTL_RELEASE_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${CTL_TOKEN:-}" ]]; then
+            echo "CTL_RELEASE_TOKEN not set, skipping CTL upload."; exit 0; fi
+          TAG="${{ github.ref_name }}"
+          for f in artifacts/**/*.tgz artifacts/**/*; do
+            [ -f "$f" ] || continue
+            filename=$(basename "$f")
+            # For BSD: file name format may be gnb-freebsd-amd64 (no underscores)
+            # Try to parse platform and arch
+            if [[ "$filename" == *.tgz ]]; then
+              platform=$(echo "$filename" | cut -d'_' -f2)
+              arch=$(echo "$filename" | cut -d'_' -f3)
+              version=$(echo "$filename" | cut -d'_' -f4- | sed 's/.tgz$//')
+            else
+              continue
+            fi
+            echo "Uploading $filename to CTL (platform=$platform arch=$arch version=$version)..."
+            curl -sf -X POST "https://ctl.mynet.club/api/v2/releases" \
+              -H "Authorization: Bearer $CTL_TOKEN" \
+              -F "product=gnb" \
+              -F "version=${version}" \
+              -F "platform=${platform}" \
+              -F "arch=${arch}" \
+              -F "file=@${f}" \
+              -F "changelog=CI build" \
+              -F "is_stable=1" || echo "CTL upload failed for $filename (non-fatal)"
+          done

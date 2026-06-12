@@ -13,7 +13,11 @@ opengnb 构建与发布
 工作流位置
 ---------
 
-- `.github/workflows/build.yml`
+- `.github/workflows/build_linux.yml`（Linux）
+- `.github/workflows/build_openwrt.yml`（OpenWrt）
+- `.github/workflows/build_darwin.yml`（macOS）
+- `.github/workflows/build_windows.yml`（Windows）
+- `.github/workflows/build_bsd.yml`（FreeBSD / OpenBSD）
 
 触发方式
 ------
@@ -28,9 +32,10 @@ Makefile 约定
 
 - Linux: `Makefile.linux`
 - OpenWrt: `Makefile.openwrt`
-- Windows: `Makefile.windows`
-- macOS (Darwin): `Makefile.darwin`
+- Windows: `Makefile.mingw_x86_64`
+- macOS (Darwin): `Makefile.Darwin`
 - FreeBSD: `Makefile.freebsd`
+- OpenBSD: `Makefile.openbsd`
 
 每个 Makefile 需支持以下变量：
 
@@ -47,23 +52,20 @@ Makefile 约定
 	- Windows 使用 `zip`
 	- 其他平台使用 `tgz`
 - 发布布局（不创建 latest，版本体现在目录层级）：
-	- 远端目录：`{DOWNLOAD_SSH_REMOTE_DIR}/{tag}/`
-	- 包文件名：`gnb_{os}_{arch}.{ext}`（文件名不含版本）
+	- 远端目录：`https://ctl.mynet.club/api/v2/releases`
+	- 包文件名：`gnb_{os}_{arch}_{version}.{ext}`
 - 发布阶段会生成 `checksums.txt`（sha256），与所有包一起上传。
 
-远程上传（rsync）
--------------
+远程上传（ctl.mynet.club API）
+-----------------------------
 
-工作流支持通过 rsync 上传到远端服务器，目录结构为：`$DOWNLOAD_SSH_REMOTE_DIR/{tag}`。
+工作流支持通过 ctl.mynet.club API 上传构建产物。
 
-在仓库 Settings → Secrets and variables → Actions 中配置以下 Secrets：
+在仓库 Settings → Secrets and variables → Actions 中配置以下 Secret：
 
-- `DOWNLOAD_SSH_HOST`：SSH 主机名
-- `DOWNLOAD_SSH_USER`：SSH 用户名
-- `DOWNLOAD_SSH_KEY`：私钥内容（PEM）
-- `DOWNLOAD_SSH_REMOTE_DIR`：远端基础目录（不含 tag）
+- `CTL_RELEASE_TOKEN`：ctl.mynet.club 的 API Bearer Token
 
-当以上四个 Secrets 均配置时，发布 Job 会自动上传；否则跳过上传，仅保留 GitHub Artifacts。
+当该 Secret 已配置时，发布 Job 会自动上传到 ctl.mynet.club；否则跳过上传，仅保留 GitHub Release Assets。
 
 变量语义（OS/ARCH/VERSION/OUT_DIR/SRC_DIR）
 ------------------------------
@@ -74,12 +76,12 @@ Makefile 约定
 - `OUT_DIR`：本地构建输出目录（按 `{tag}/{os}/{arch}` 分层），Makefile 需将产物放入该目录。
 - `SRC_DIR`：源码目录，固定为本仓库 `src/`。
 
-注意：不生成 `latest` 目录，发布与远程目录严格按版本命名（如 `{REMOTE_DIR}/v1.6.0.a/`）。
+注意：不生成 `latest` 目录，发布与远程目录严格按版本命名。
 
 目标平台矩阵
 --------
 
-当前默认版本：`v1.6.0.a`
+当前默认版本：`v1.6.5`
 
 平台与架构：
 
@@ -93,7 +95,7 @@ Makefile 约定
 
 1. 请确保各平台对应 Makefile 已存在并可在 Ubuntu 构建环境下进行交叉编译（或在 Makefile 内自行拉取工具链）。
 2. 如需变更版本矩阵或命名，可编辑工作流矩阵或打包步骤。
-3. 远端下载站点的 checksums 路径可为：`https://download.mynet.club/gnb/{tag}/checksums.txt`（需与服务器目录对应）。
+3. 构建产物可通过 `https://ctl.mynet.club` 获取，校验文件 checksums.txt 与所有包一起发布在 GitHub Release 中。
 
 同步外部源码到本仓库
 --------------
@@ -103,7 +105,7 @@ Makefile 约定
 用法（在仓库根目录运行）：
 
 ```bash
-bash scripts/sync_source.sh --repo owner/repo --ref v1.6.0.a --subdir path/in/repo --version v1.6.0.a
+bash scripts/sync_source.sh --repo owner/repo --ref v1.6.5 --subdir path/in/repo --version v1.6.5
 ```
 
 脚本行为：

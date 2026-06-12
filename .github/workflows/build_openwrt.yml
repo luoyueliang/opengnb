@@ -352,3 +352,31 @@ jobs:
             gh release create "$TAG" --title "Release $TAG" --notes "OpenWrt SDK build" --repo "${GITHUB_REPOSITORY}" || true
             gh release upload "$TAG" "${FILES[@]}" --clobber --repo "${GITHUB_REPOSITORY}"
           }
+
+      - name: Upload to CTL release API
+        env:
+          CTL_TOKEN: ${{ secrets.CTL_RELEASE_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${CTL_TOKEN:-}" ]]; then
+            echo "CTL_RELEASE_TOKEN not set, skipping CTL upload."; exit 0; fi
+          TAG="${{ github.ref_name }}"
+          for f in .release/flat/*.tgz; do
+            filename=$(basename "$f")
+            # OpenWrt filenames: gnb_openwrt_arm64_v1.6.5.tgz or gnb_openwrt_arm64_23.05.6_v1.6.5.tgz
+            platform=$(echo "$filename" | cut -d'_' -f2)
+            # Version is the last _v*.*.*.tgz part; arch is in between
+            arch=$(echo "$filename" | cut -d'_' -f3)
+            version=$(echo "$filename" | sed 's/.*_v/v/' | sed 's/.tgz$//')
+            echo "Uploading $filename to CTL (platform=$platform arch=$arch version=$version)..."
+            curl -sf -X POST "https://ctl.mynet.club/api/v2/releases" \
+              -H "Authorization: Bearer $CTL_TOKEN" \
+              -F "product=gnb" \
+              -F "version=${version}" \
+              -F "platform=${platform}" \
+              -F "arch=${arch}" \
+              -F "file=@${f}" \
+              -F "changelog=CI build" \
+              -F "is_stable=1" || echo "CTL upload failed for $filename (non-fatal)"
+          done
