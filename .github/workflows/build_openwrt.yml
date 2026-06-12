@@ -199,7 +199,7 @@ jobs:
 
           echo "=== Building zlib ==="
           for f in adler32 deflate inffast inflate inftrees trees zutil; do
-            $CC -c -fPIC -o src/libs/zlib/${f}.o src/libs/zlib/${f}.c
+            $CC -c -fPIC -DNO_GZIP -o src/libs/zlib/${f}.o src/libs/zlib/${f}.c
           done
           $AR_BIN rcs "$DEP_LIB/libz.a" src/libs/zlib/*.o
 
@@ -222,7 +222,7 @@ jobs:
           ls -lh "$DEP_LIB/"
           make -C src -f Makefile.openwrt install \
             CC="$CC" \
-            CFLAGS="-ffunction-sections -fdata-sections -I./src -I./libs -DGNB_OPENWRT_BUILD=1 -O2" \
+            CFLAGS="-ffunction-sections -fdata-sections -I./src -I./libs -DGNB_OPENWRT_BUILD=1 -DNO_GZIP=1 -O2" \
             CLI_LDFLAGS="-Wl,--gc-sections -s -L${DEP_LIB}" \
             GNB_ES_LDFLAGS="-Wl,--gc-sections -s -L${DEP_LIB}" \
             DEBUG=0
