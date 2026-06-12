@@ -252,6 +252,9 @@ jobs:
           echo "=== Final checksums.txt ==="
           cat checksums.txt
 
+          # Clean up intermediate files (do not upload them)
+          rm -f new_checksums.txt kept.txt .existing/checksums.txt 2>/dev/null || true
+
       - name: Upload checksums artifact
         uses: actions/upload-artifact@v4
         with:
