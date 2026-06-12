@@ -1,0 +1,308 @@
+name: Build GNB For OpenWrt
+
+# Uses official OpenWrt SDK for compilation.
+# SDK 24.10 is primary (artifacts published to release).
+# SDK 23.05 and snapshot are for compatibility testing only.
+
+on:
+  workflow_dispatch:
+    inputs:
+      sdk_version:
+        description: "SDK version to build (leave empty for all)"
+        required: false
+        type: choice
+        options:
+          - "all"
+          - "24.10.7"
+          - "23.05.6"
+          - "snapshot"
+        default: "all"
+  push:
+    tags:
+      - "v*.*.*"
+
+env:
+  PROJECT: gnb
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        sdk:
+          - version: "24.10.7"
+            gcc: "13.3.0"
+            base_url: "https://downloads.openwrt.org/releases/24.10.7/targets"
+            ext: "tar.zst"
+          - version: "23.05.6"
+            gcc: "12.3.0"
+            base_url: "https://downloads.openwrt.org/releases/23.05.6/targets"
+            ext: "tar.xz"
+          - version: "snapshot"
+            gcc: "14.3.0"
+            base_url: "https://downloads.openwrt.org/snapshots/targets"
+            ext: "tar.zst"
+        arch:
+          - { name: arm64,     sdk_target: armsr/armv8,      sdk_name: armsr-armv8,      sdk_libc: musl      }
+          - { name: amd64,     sdk_target: x86/64,           sdk_name: x86-64,           sdk_libc: musl      }
+          - { name: mipsel,    sdk_target: ramips/mt7621,    sdk_name: ramips-mt7621,    sdk_libc: musl      }
+          - { name: mipsel-sf, sdk_target: ramips/mt7620,    sdk_name: ramips-mt7620,    sdk_libc: musl      }
+          - { name: mips,      sdk_target: ath79/generic,    sdk_name: ath79-generic,    sdk_libc: musl      }
+          - { name: armv7,     sdk_target: bcm27xx/bcm2709,  sdk_name: bcm27xx-bcm2709,  sdk_libc: musl_eabi }
+
+    steps:
+      - name: Check SDK filter
+        id: check
+        run: |
+          INPUT="${{ github.event.inputs.sdk_version }}"
+          if [ -n "$INPUT" ] && [ "$INPUT" != "all" ] && [ "$INPUT" != "${{ matrix.sdk.version }}" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Free disk space
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+            /opt/hostedtoolcache/CodeQL /usr/local/share/boost \
+            "$AGENT_TOOLSDIRECTORY" || true
+          df -h
+
+      - name: Checkout source
+        if: steps.check.outputs.skip != 'true'
+        uses: actions/checkout@v4
+
+      - name: Extract tag
+        if: steps.check.outputs.skip != 'true'
+        id: tag
+        run: echo "tag=${GITHUB_REF##*/}" >> "$GITHUB_OUTPUT"
+
+      - name: Install dependencies
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential zstd file
+
+      - name: Cache OpenWrt SDK
+        if: steps.check.outputs.skip != 'true'
+        uses: actions/cache@v4
+        with:
+          path: /tmp/openwrt-sdk-${{ matrix.sdk.version }}-${{ matrix.arch.sdk_name }}
+          key: openwrt-sdk-${{ matrix.sdk.version }}-${{ matrix.arch.sdk_name }}-v1
+
+      - name: Download and setup SDK
+        if: steps.check.outputs.skip != 'true'
+        id: sdk
+        run: |
+          set -euo pipefail
+          SDK_VERSION="${{ matrix.sdk.version }}"
+          SDK_TARGET="${{ matrix.arch.sdk_target }}"
+          SDK_NAME="${{ matrix.arch.sdk_name }}"
+          SDK_LIBC="${{ matrix.arch.sdk_libc }}"
+          SDK_GCC="${{ matrix.sdk.gcc }}"
+          SDK_BASE_URL="${{ matrix.sdk.base_url }}"
+          SDK_EXT="${{ matrix.sdk.ext }}"
+
+          # Construct SDK filename based on version
+          if [ "$SDK_VERSION" = "snapshot" ]; then
+            SDK_FILENAME="openwrt-sdk-${SDK_NAME}_gcc-${SDK_GCC}_${SDK_LIBC}.Linux-x86_64.${SDK_EXT}"
+          else
+            SDK_FILENAME="openwrt-sdk-${SDK_VERSION}-${SDK_NAME}_gcc-${SDK_GCC}_${SDK_LIBC}.Linux-x86_64.${SDK_EXT}"
+          fi
+
+          SDK_URL="${SDK_BASE_URL}/${SDK_TARGET}/${SDK_FILENAME}"
+          SDK_DIR="/tmp/openwrt-sdk-${SDK_VERSION}-${SDK_NAME}"
+
+          if [ ! -d "$SDK_DIR" ]; then
+            echo "Downloading SDK from: $SDK_URL"
+            wget -q "$SDK_URL" -O "/tmp/${SDK_FILENAME}" || {
+              echo "ERROR: Failed to download SDK from $SDK_URL"
+              exit 1
+            }
+
+            echo "Extracting ${SDK_FILENAME}..."
+            case "$SDK_EXT" in
+              tar.xz)  tar -xJf "/tmp/${SDK_FILENAME}" -C /tmp/ ;;
+              tar.zst) tar --use-compress-program=unzstd -xf "/tmp/${SDK_FILENAME}" -C /tmp/ ;;
+              *)       echo "Unknown format: $SDK_EXT"; exit 1 ;;
+            esac
+            rm -f "/tmp/${SDK_FILENAME}"
+
+            # Find extracted directory (name varies)
+            EXTRACTED=$(find /tmp -maxdepth 1 -type d -name "openwrt-sdk-*${SDK_NAME}*" | head -1)
+            if [ -z "$EXTRACTED" ]; then
+              echo "ERROR: Could not find extracted SDK directory"
+              find /tmp -maxdepth 1 -type d | head -20
+              exit 1
+            fi
+            mv "$EXTRACTED" "$SDK_DIR"
+            echo "SDK extracted to: $SDK_DIR"
+          else
+            echo "SDK already cached at: $SDK_DIR"
+          fi
+
+          # Find GCC binary
+          CC=$(find "$SDK_DIR/staging_dir" -path "*/bin/*-openwrt-linux-*gcc" ! -name "*g++*" ! -name "*-cc" 2>/dev/null | head -1)
+          if [ -z "$CC" ]; then
+            echo "ERROR: Could not find GCC binary in SDK staging_dir"
+            find "$SDK_DIR/staging_dir" -name "*gcc*" 2>/dev/null | head -20
+            exit 1
+          fi
+          echo "Found CC: $CC"
+          $CC --version | head -1
+
+          STAGING_DIR="$SDK_DIR/staging_dir"
+          echo "cc=$CC" >> "$GITHUB_OUTPUT"
+          echo "staging_dir=$STAGING_DIR" >> "$GITHUB_OUTPUT"
+          echo "sdk_dir=$SDK_DIR" >> "$GITHUB_OUTPUT"
+
+      - name: Build
+        if: steps.check.outputs.skip != 'true'
+        env:
+          STAGING_DIR: ${{ steps.sdk.outputs.staging_dir }}
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.tag.outputs.tag }}"
+          SDK_VERSION="${{ matrix.sdk.version }}"
+          OUT_DIR="$GITHUB_WORKSPACE/.out/${TAG}/openwrt/${{ matrix.arch.name }}-${SDK_VERSION}/bin"
+          PKG_DIR="$GITHUB_WORKSPACE/.pkg/${TAG}"
+          mkdir -p "$OUT_DIR" "$PKG_DIR"
+
+          CC="${{ steps.sdk.outputs.cc }}"
+          echo "=== Build info ==="
+          echo "CC:          $CC"
+          echo "STAGING_DIR: $STAGING_DIR"
+          echo "SDK:         $SDK_VERSION"
+          echo "arch:        ${{ matrix.arch.name }}"
+          echo "tag:         $TAG"
+
+          # SDK build: dynamic linking against musl (OpenWrt has musl runtime)
+          make -C src -f Makefile.openwrt clean
+          make -C src -f Makefile.openwrt install \
+            CC="$CC" \
+            DEBUG=0
+
+          if [ -d src/bin ]; then
+            mv src/bin/* "$OUT_DIR/"
+          else
+            echo "ERROR: src/bin not found after build"
+            exit 1
+          fi
+          echo "=== Build complete ==="
+          ls -lh "$OUT_DIR/"
+
+      - name: Verify binaries
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          TAG="${{ steps.tag.outputs.tag }}"
+          SDK_VERSION="${{ matrix.sdk.version }}"
+          OUT_DIR="$GITHUB_WORKSPACE/.out/${TAG}/openwrt/${{ matrix.arch.name }}-${SDK_VERSION}/bin"
+          missing=0
+          for f in gnb gnb_ctl gnb_es gnb_crypto; do
+            if [ -f "$OUT_DIR/$f" ]; then
+              info=$(file -b "$OUT_DIR/$f")
+              size=$(stat -c%s "$OUT_DIR/$f")
+              echo "$f: $info (${size} bytes)"
+            else
+              echo "ERROR: $f not found in $OUT_DIR"
+              missing=1
+            fi
+          done
+          [ $missing -eq 0 ] || exit 1
+
+      - name: Package
+        # Only package from primary SDK (24.10) to avoid duplicate artifacts
+        if: matrix.sdk.version == '24.10.7' && steps.check.outputs.skip != 'true'
+        run: |
+          TAG="${{ steps.tag.outputs.tag }}"
+          SDK_VERSION="${{ matrix.sdk.version }}"
+          OUT_PARENT="$GITHUB_WORKSPACE/.out/${TAG}/openwrt/${{ matrix.arch.name }}-${SDK_VERSION}"
+          PKG_DIR="$GITHUB_WORKSPACE/.pkg/${TAG}"
+          ARCHIVE="${PROJECT}_openwrt_${{ matrix.arch.name }}_${TAG}.tgz"
+          tar -czvf "$ARCHIVE" -C "$OUT_PARENT" bin
+          mv "$ARCHIVE" "$PKG_DIR/"
+          echo "Packaged: $PKG_DIR/$ARCHIVE"
+
+      - name: Cleanup build output
+        if: always()
+        run: |
+          rm -rf "$GITHUB_WORKSPACE/.out" "$GITHUB_WORKSPACE/src/bin" || true
+          make -C src -f Makefile.openwrt clean 2>/dev/null || true
+          df -h
+
+      - name: Upload artifacts
+        # Only upload from primary SDK (24.10)
+        if: matrix.sdk.version == '24.10.7' && steps.check.outputs.skip != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: gnb-openwrt-${{ matrix.arch.name }}
+          path: .pkg/${{ steps.tag.outputs.tag }}/*
+
+  publish:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: .release/
+
+      - name: Flatten artifacts
+        run: |
+          mkdir -p .release/flat
+          find .release -type f -name "*.tgz" -exec mv {} .release/flat/ \;
+          ls -lh .release/flat/
+
+      - name: Generate and merge checksums
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd .release/flat
+          sha256sum *.tgz > new_checksums.txt
+
+          TAG="${{ github.ref_name }}"
+          mkdir -p .existing
+          gh release download "$TAG" -p "checksums.txt" -D .existing/ \
+            --repo "${GITHUB_REPOSITORY}" 2>/dev/null || true
+
+          if [ -f .existing/checksums.txt ]; then
+            new_files=$(awk '{print $2}' new_checksums.txt)
+            while IFS= read -r line; do
+              fname=$(echo "$line" | awk '{print $2}')
+              if ! printf '%s\n' $new_files | grep -qxF "$fname"; then
+                echo "$line"
+              fi
+            done < .existing/checksums.txt > kept.txt
+            sort -k2 kept.txt new_checksums.txt > checksums.txt
+          else
+            sort -k2 new_checksums.txt > checksums.txt
+          fi
+          echo "=== Final checksums.txt ==="
+          cat checksums.txt
+
+      - name: Upload checksums artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: checksums-openwrt
+          path: .release/flat/checksums.txt
+
+      - name: Upload to GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="${{ github.ref_name }}"
+          FILES=(.release/flat/*)
+          echo "Uploading to release $TAG: ${FILES[*]}"
+          gh release upload "$TAG" "${FILES[@]}" --clobber --repo "${GITHUB_REPOSITORY}" || {
+            echo "Upload failed, creating release first..."
+            gh release create "$TAG" --title "Release $TAG" --notes "OpenWrt SDK build" --repo "${GITHUB_REPOSITORY}" || true
+            gh release upload "$TAG" "${FILES[@]}" --clobber --repo "${GITHUB_REPOSITORY}"
+          }

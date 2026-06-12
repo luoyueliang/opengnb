@@ -1,4 +1,4 @@
-name: Build GNB For Linux, OpenWrt
+name: Build GNB For Linux
 
 on:
   workflow_dispatch:
@@ -8,7 +8,6 @@ on:
 
 env:
   PROJECT: gnb
-  BASE_URL: "https://download.mynet.club/gnb"  
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -21,29 +20,24 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Linux
-          - { os: linux, platform: linux, arch: amd64,        makefile: Makefile.linux }
-          - { os: linux, platform: linux, arch: arm64,        makefile: Makefile.linux }
-          - { os: linux, platform: linux, arch: armv7-softfp, makefile: Makefile.linux }
-          - { os: linux, platform: linux, arch: armv7-hardfp, makefile: Makefile.linux }
-          - { os: linux, platform: linux, arch: mips,         makefile: Makefile.linux }
-          - { os: linux, platform: linux, arch: mipsel,       makefile: Makefile.linux }
-          - { os: linux, platform: linux, arch: mips64,       makefile: Makefile.linux }
-          - { os: linux, platform: linux, arch: mips64el,     makefile: Makefile.linux }
-          - { os: linux, platform: linux, arch: riscv64,      makefile: Makefile.linux }
-          # OpenWrt
-          - { os: openwrt, platform: linux, arch: amd64,         makefile: Makefile.openwrt }
-          - { os: openwrt, platform: linux, arch: arm64,         makefile: Makefile.openwrt }
-          - { os: openwrt, platform: linux, arch: armv7-softfp,  makefile: Makefile.openwrt }
-          - { os: openwrt, platform: linux, arch: armv7-hardfp,  makefile: Makefile.openwrt }
-          - { os: openwrt, platform: linux, arch: mips,          makefile: Makefile.openwrt }
-          - { os: openwrt, platform: linux, arch: mipsel,        makefile: Makefile.openwrt }
-          - { os: openwrt, platform: linux, arch: mipsel-muslsf, makefile: Makefile.openwrt }
-          - { os: openwrt, platform: linux, arch: mips64,        makefile: Makefile.openwrt }
-          - { os: openwrt, platform: linux, arch: mips64el,      makefile: Makefile.openwrt }
-          - { os: openwrt, platform: linux, arch: riscv64,       makefile: Makefile.openwrt }
+          - { arch: amd64,        makefile: Makefile.linux }
+          - { arch: arm64,        makefile: Makefile.linux }
+          - { arch: armv7-softfp, makefile: Makefile.linux }
+          - { arch: armv7-hardfp, makefile: Makefile.linux }
+          - { arch: mips,         makefile: Makefile.linux }
+          - { arch: mipsel,       makefile: Makefile.linux }
+          - { arch: mips64,       makefile: Makefile.linux }
+          - { arch: mips64el,     makefile: Makefile.linux }
+          - { arch: riscv64,      makefile: Makefile.linux }
 
     steps:
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+            /opt/hostedtoolcache/CodeQL /usr/local/share/boost \
+            "$AGENT_TOOLSDIRECTORY" || true
+          df -h
+
       - name: Checkout source
         uses: actions/checkout@v4
         with:
@@ -54,250 +48,49 @@ jobs:
         id: tag
         run: echo "tag=${GITHUB_REF##*/}" >> "$GITHUB_OUTPUT"
 
-      - name: Install dependencies
-        if: matrix.os != 'darwin'
+      - name: Install cross compilers
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential pkg-config wget curl git ca-certificates xz-utils tar flex bison autoconf automake libtool texinfo gawk cmake ninja-build file
+          sudo apt-get install -y build-essential pkg-config wget curl git ca-certificates xz-utils tar file
           sudo apt-get install -y gcc-aarch64-linux-gnu gcc-arm-linux-gnueabihf || true
           sudo apt-get install -y gcc-mips-linux-gnu gcc-mipsel-linux-gnu gcc-mips64-linux-gnuabi64 gcc-mips64el-linux-gnuabi64 || true
           sudo apt-get install -y gcc-riscv64-linux-gnu || true
 
-      
-
-      - name: Cache OpenWrt musl toolchains
-        if: matrix.os == 'openwrt'
-        uses: actions/cache@v3
-        with:
-          path: /tmp/musl-cross-${{ matrix.arch }}
-          key: openwrt-musl-${{ matrix.arch }}-${{ runner.os }}-v1
-
-      - name: Setup musl / special OpenWrt toolchain
-        if: matrix.os == 'openwrt' || matrix.arch == 'armv7-softfp' || matrix.arch == 'armv7-hardfp'
+      - name: Setup cross compiler
         run: |
-          set -e
-          cd /tmp
-          musl_available=false
-          case "${{ matrix.arch }}" in
-            mipsel)
-              if [ ! -d mipsel-linux-musl-cross ]; then
-                if wget -q https://musl.cc/mipsel-linux-musl-cross.tgz -O mipsel-linux-musl-cross.tgz; then
-                  tar -xzf mipsel-linux-musl-cross.tgz && musl_available=true
-                else
-                  echo "WARN: mipsel musl download failed, will use glibc cross-compiler"
-                fi
-              else
-                musl_available=true
-              fi
-              if [ "$musl_available" = "true" ] && [ -d mipsel-linux-musl-cross/bin ]; then
-                echo "/tmp/mipsel-linux-musl-cross/bin" >> $GITHUB_PATH
-                echo "MUSL_AVAILABLE=true" >> $GITHUB_ENV
-              fi
-              ;;
-            mipsel-muslsf)
-              musl_available=false
-              if [ ! -d mipsel-linux-muslsf-cross ]; then
-                echo "Trying to use local mipsel-muslsf toolchain from repository..."
-                if [ -f "$GITHUB_WORKSPACE/.github/toolchains/mipsel-linux-muslsf-cross.tgz" ]; then
-                  echo "Found local toolchain, extracting..."
-                  cp "$GITHUB_WORKSPACE/.github/toolchains/mipsel-linux-muslsf-cross.tgz" .
-                  if tar -xzf mipsel-linux-muslsf-cross.tgz; then
-                    musl_available=true
-                    echo "Local toolchain extracted successfully"
-                  else
-                    echo "ERROR: Failed to extract local toolchain"
-                  fi
-                else
-                  echo "Local toolchain not found, downloading from musl.cc..."
-                  # 尝试3次下载
-                  for attempt in 1 2 3; do
-                    echo "Download attempt $attempt/3..."
-                    if wget --timeout=30 --tries=2 -q https://musl.cc/mipsel-linux-muslsf-cross.tgz -O mipsel-linux-muslsf-cross.tgz; then
-                      echo "Download successful, extracting..."
-                      if tar -xzf mipsel-linux-muslsf-cross.tgz; then
-                        musl_available=true
-                        echo "Downloaded toolchain extracted successfully"
-                        break
-                      else
-                        echo "ERROR: Failed to extract downloaded toolchain"
-                        rm -f mipsel-linux-muslsf-cross.tgz
-                      fi
-                    else
-                      echo "Download attempt $attempt failed"
-                      rm -f mipsel-linux-muslsf-cross.tgz
-                      if [ $attempt -lt 3 ]; then
-                        echo "Retrying in 5 seconds..."
-                        sleep 5
-                      fi
-                    fi
-                  done
-                fi
-                
-                if [ "$musl_available" = "false" ]; then
-                  echo "ERROR: Both local and remote toolchain setup failed"
-                fi
-              else
-                musl_available=true
-                echo "mipsel-linux-muslsf-cross toolchain already exists"
-              fi
-              if [ "$musl_available" = "true" ] && [ -d mipsel-linux-muslsf-cross/bin ]; then
-                echo "/tmp/mipsel-linux-muslsf-cross/bin" >> $GITHUB_PATH
-                echo "MUSL_AVAILABLE=true" >> $GITHUB_ENV
-                echo "Added mipsel-linux-muslsf-cross/bin to PATH"
-                ls -la mipsel-linux-muslsf-cross/bin/ | head -5
-              else
-                echo "ERROR: mipsel-linux-muslsf-cross toolchain setup failed"
-                echo "musl_available=$musl_available"
-                echo "Directory check: $(ls -ld mipsel-linux-muslsf-cross 2>/dev/null || echo 'Not found')"
-                exit 1
-              fi
-              ;;
-            riscv64)
-              if [ ! -d riscv64-linux-musl-cross ]; then
-                if wget -q https://musl.cc/riscv64-linux-musl-cross.tgz -O riscv64-linux-musl-cross.tgz; then
-                  tar -xzf riscv64-linux-musl-cross.tgz && musl_available=true
-                else
-                  echo "WARN: riscv64 musl download failed, will use glibc cross-compiler"
-                fi
-              else
-                musl_available=true
-              fi
-              if [ "$musl_available" = "true" ] && [ -d riscv64-linux-musl-cross/bin ]; then
-                echo "/tmp/riscv64-linux-musl-cross/bin" >> $GITHUB_PATH
-                echo "MUSL_AVAILABLE=true" >> $GITHUB_ENV
-              fi
-              ;;
-            armv7-softfp|armv7-hardfp)
-              if [ ! -d arm-linux-musleabihf-cross ]; then
-                if wget -q https://musl.cc/arm-linux-musleabihf-cross.tgz -O arm-linux-musleabihf-cross.tgz; then
-                  tar -xzf arm-linux-musleabihf-cross.tgz && musl_available=true
-                else
-                  echo "WARN: arm-musleabihf musl download failed, will use glibc cross-compiler"
-                fi
-              else
-                musl_available=true
-              fi
-              if [ "$musl_available" = "true" ] && [ -d arm-linux-musleabihf-cross/bin ]; then
-                echo "/tmp/arm-linux-musleabihf-cross/bin" >> $GITHUB_PATH
-                echo "MUSL_AVAILABLE=true" >> $GITHUB_ENV
-              fi
-              ;;
-            amd64)
-              echo "No extra musl toolchain needed for native amd64"
-              ;;
-            arm64)
-              # 为 arm64 添加 musl 工具链支持以确保静态链接
-              if [ ! -d aarch64-linux-musl-cross ]; then
-                if wget -q https://musl.cc/aarch64-linux-musl-cross.tgz -O aarch64-linux-musl-cross.tgz; then
-                  tar -xzf aarch64-linux-musl-cross.tgz && musl_available=true
-                  echo "aarch64-linux-musl-cross toolchain downloaded and extracted"
-                else
-                  echo "WARN: aarch64-linux-musl musl download failed, will use glibc cross-compiler"
-                fi
-              else
-                musl_available=true
-              fi
-              if [ "$musl_available" = "true" ] && [ -d aarch64-linux-musl-cross/bin ]; then
-                echo "/tmp/aarch64-linux-musl-cross/bin" >> $GITHUB_PATH
-                echo "MUSL_AVAILABLE=true" >> $GITHUB_ENV
-                echo "Added aarch64-linux-musl-cross/bin to PATH"
-              fi
-              ;;
-            *) echo "No extra musl toolchain for ${{ matrix.arch }}";;
-          esac
-      
-      - name: Setup cross compiler and static flags
-        run: |
-          MF="src/${{ matrix.makefile }}"
-          
-          # 确定是否使用静态链接
           STATIC_LINKING=false
           case "${{ matrix.arch }}" in
-            amd64)         
-              export CC=gcc 
-              # amd64 native可以使用静态链接
+            amd64)
+              export CC=gcc
               STATIC_LINKING=true
               ;;
-            arm64)         
-              if command -v aarch64-linux-musl-gcc >/dev/null 2>&1; then
-                export CC=aarch64-linux-musl-gcc
-                STATIC_LINKING=true  # musl支持静态链接
-                echo "Using musl toolchain for ${{ matrix.arch }}: aarch64-linux-musl-gcc"
-              else
-                export CC=aarch64-linux-gnu-gcc
-                STATIC_LINKING=true  # 尝试静态链接，即使使用glibc
-                echo "WARN: Using glibc toolchain for ${{ matrix.arch }}, static linking may fail"
-              fi
+            arm64)
+              export CC=aarch64-linux-gnu-gcc
+              STATIC_LINKING=true
               ;;
             armv7-softfp|armv7-hardfp)
-              if command -v arm-linux-musleabihf-gcc >/dev/null 2>&1; then
-                export CC=arm-linux-musleabihf-gcc
-                STATIC_LINKING=true  # musl支持静态链接
-                echo "Using musl toolchain for ${{ matrix.arch }}: arm-linux-musleabihf-gcc"
-              else
-                export CC=arm-linux-gnueabihf-gcc
-                STATIC_LINKING=true  # 尝试静态链接，即使使用glibc
-                echo "WARN: Using glibc toolchain for ${{ matrix.arch }}, static linking may fail"
-              fi
-              ;;
-            mips)          
-              export CC=mips-linux-gnu-gcc 
-              # mips 也应该支持静态链接 
+              export CC=arm-linux-gnueabihf-gcc
               STATIC_LINKING=true
               ;;
-            mipsel)        
-              if command -v mipsel-linux-musl-gcc >/dev/null 2>&1; then 
-                export CC=mipsel-linux-musl-gcc
-                STATIC_LINKING=true  # musl支持静态链接
-                echo "Using musl toolchain for ${{ matrix.arch }}: mipsel-linux-musl-gcc"
-              else 
-                export CC=mipsel-linux-gnu-gcc
-                echo "WARN: Using glibc toolchain for ${{ matrix.arch }}, static linking may fail"
-                STATIC_LINKING=true  # 尝试静态链接，即使使用glibc
-              fi 
-              ;;
-            mipsel-muslsf) 
-              echo "=== mipsel-muslsf toolchain check ==="
-              echo "PATH before toolchain check: $PATH"
-              echo "Checking for mipsel-linux-muslsf-gcc..."
-              which mipsel-linux-muslsf-gcc || echo "mipsel-linux-muslsf-gcc not found in PATH"
-              ls -la /tmp/mipsel-linux-muslsf-cross/bin/ 2>/dev/null || echo "Toolchain bin directory not found"
-              
-              if command -v mipsel-linux-muslsf-gcc >/dev/null 2>&1; then
-                export CC=mipsel-linux-muslsf-gcc
-                STATIC_LINKING=true  # musl支持静态链接
-                echo "✓ Using musl toolchain for ${{ matrix.arch }}: mipsel-linux-muslsf-gcc"
-                echo "Compiler version: $($CC --version | head -1)"
-              else
-                echo "ERROR: mipsel-muslsf requires mipsel-linux-muslsf-gcc but not found in PATH"
-                echo "Available gcc compilers in /tmp:"
-                find /tmp -name "*gcc*" 2>/dev/null | head -10 || echo "No gcc found in /tmp"
-                echo "Current PATH: $PATH"
-                echo "Contents of /tmp:"
-                ls -la /tmp/ | grep -E "(mipsel|muslsf)" || echo "No mipsel/muslsf directories found"
-                exit 1
-              fi
-              ;;
-            mips64)        
-              export CC=mips64-linux-gnuabi64-gcc 
-              # mips64 也应该支持静态链接
+            mips)
+              export CC=mips-linux-gnu-gcc
               STATIC_LINKING=true
               ;;
-            mips64el)      
-              export CC=mips64el-linux-gnuabi64-gcc 
-              # mips64el 也应该支持静态链接
+            mipsel)
+              export CC=mipsel-linux-gnu-gcc
+              STATIC_LINKING=true
+              ;;
+            mips64)
+              export CC=mips64-linux-gnuabi64-gcc
+              STATIC_LINKING=true
+              ;;
+            mips64el)
+              export CC=mips64el-linux-gnuabi64-gcc
               STATIC_LINKING=true
               ;;
             riscv64)
-              if command -v riscv64-linux-musl-gcc >/dev/null 2>&1; then
-                export CC=riscv64-linux-musl-gcc
-                STATIC_LINKING=true  # musl支持静态链接
-                echo "Using musl toolchain for ${{ matrix.arch }}: riscv64-linux-musl-gcc"
-              else
-                export CC=riscv64-linux-gnu-gcc
-                echo "WARN: Using glibc toolchain for ${{ matrix.arch }}, static linking may fail"
-                STATIC_LINKING=true  # 尝试静态链接，即使使用glibc
-              fi
+              export CC=riscv64-linux-gnu-gcc
+              STATIC_LINKING=true
               ;;
           esac
 
@@ -305,41 +98,21 @@ jobs:
           export AR=${CC/gcc/ar}
           export RANLIB=${CC/gcc/ranlib}
 
-          # 软浮点平台的特殊编译标志
+          # Architecture-specific flags
           case "${{ matrix.arch }}" in
-            mipsel-muslsf)
-              export CFLAGS="-march=mips32r2 -mtune=mips32r2 -msoft-float"
-              export LDFLAGS="-msoft-float"
-              echo "Applied soft-float flags for mipsel-muslsf"
-              ;;
             armv7-softfp)
               export CFLAGS="-march=armv7-a -mfloat-abi=soft"
               export LDFLAGS="-mfloat-abi=soft"
-              echo "Applied soft-float flags for armv7-softfp" 
               ;;
             armv7-hardfp)
               export CFLAGS="-march=armv7-a -mfloat-abi=hard -mfpu=vfpv3-d16"
               export LDFLAGS="-mfloat-abi=hard"
-              echo "Applied hard-float flags for armv7-hardfp"
               ;;
           esac
 
-          # 只有在支持静态链接的情况下才添加-static参数
           if [ "$STATIC_LINKING" = "true" ]; then
-            export CLI_LDFLAGS="${CLI_LDFLAGS} -static"
-            export GNB_ES_LDFLAGS="${GNB_ES_LDFLAGS} -static"
-            echo "STATIC_LINKING=true" >> $GITHUB_ENV
-            echo "Static linking enabled for ${{ matrix.arch }}"
-          else
-            echo "STATIC_LINKING=false" >> $GITHUB_ENV
-            echo "Dynamic linking for ${{ matrix.arch }} (static linking not supported with current toolchain)"
-          fi
-
-          # OpenWrt: Makefile.openwrt does not define CFLAGS with include paths
-          # (unlike Makefile.linux which has -I./src -I./libs), add them here
-          if [ "${{ matrix.os }}" = "openwrt" ]; then
-            INCLUDE_FLAGS="-I./src -I./libs -I./libs/miniupnpc -I./libs/libnatpmp -I./libs/zlib -D NO_GZIP=1 -D GNB_OPENWRT_BUILD=1"
-            CFLAGS="$INCLUDE_FLAGS ${CFLAGS:-}"
+            export CLI_LDFLAGS="-static"
+            export GNB_ES_LDFLAGS="-static"
           fi
 
           echo "CC=$CC" >> $GITHUB_ENV
@@ -350,179 +123,90 @@ jobs:
           echo "LDFLAGS=${LDFLAGS:-}" >> $GITHUB_ENV
           echo "CLI_LDFLAGS=$CLI_LDFLAGS" >> $GITHUB_ENV
           echo "GNB_ES_LDFLAGS=$GNB_ES_LDFLAGS" >> $GITHUB_ENV
-
+          echo "STATIC_LINKING=$STATIC_LINKING" >> $GITHUB_ENV
 
       - name: Build
         run: |
-          OUT_DIR="$GITHUB_WORKSPACE/.out/${{ steps.tag.outputs.tag }}/${{ matrix.os }}/${{ matrix.arch }}/bin"
-          PKG_DIR="$GITHUB_WORKSPACE/.pkg/${{ steps.tag.outputs.tag }}"
+          TAG="${{ steps.tag.outputs.tag }}"
+          OUT_DIR="$GITHUB_WORKSPACE/.out/${TAG}/linux/${{ matrix.arch }}/bin"
+          PKG_DIR="$GITHUB_WORKSPACE/.pkg/${TAG}"
           mkdir -p "$OUT_DIR" "$PKG_DIR"
 
           make -C src -f "${{ matrix.makefile }}" clean
-          
-          # 为特殊架构设置编译标志
-          case "${{ matrix.arch }}" in
-            mipsel-muslsf|armv7-softfp|armv7-hardfp)
-              echo "Setting architecture-specific flags for ${{ matrix.arch }}"
-              echo "Original CFLAGS from env: $CFLAGS"
-              echo "Original LDFLAGS from env: $LDFLAGS"
-              # 直接覆盖CFLAGS/LDFLAGS - 参考openwrt_muslsf.yaml的做法
-              export CFLAGS="$CFLAGS"
-              export LDFLAGS="$LDFLAGS"
-              ;;
-          esac
-          
-          # 根据是否支持静态链接来构建
-          echo "STATIC_LINKING status: ${STATIC_LINKING:-false}"
-          echo "Architecture: ${{ matrix.arch }}"
-          echo "Compiler: $CC"
-          
-          if [ "${STATIC_LINKING:-false}" = "true" ]; then
-            echo "Building with static linking..."
-            echo "CC: $CC"
-            echo "CFLAGS: $CFLAGS"
-            echo "LDFLAGS: $LDFLAGS"
-            echo "CLI_LDFLAGS will be: -static $CLI_LDFLAGS"
-            echo "GNB_ES_LDFLAGS will be: -static $GNB_ES_LDFLAGS"
-            echo "Makefile: ${{ matrix.makefile }}"
-            echo "=== Starting make install ==="
-            make -C src -f "${{ matrix.makefile }}" install \
-              CC="$CC" \
-              CLI_LDFLAGS="-static $CLI_LDFLAGS" \
-              GNB_ES_LDFLAGS="-static $GNB_ES_LDFLAGS"
-            echo "=== Make install completed ==="
-          else
-            echo "Building with dynamic linking..."
-            make -C src -f "${{ matrix.makefile }}" install \
-              CC="$CC" \
-              CLI_LDFLAGS="$CLI_LDFLAGS" \
-              GNB_ES_LDFLAGS="$GNB_ES_LDFLAGS"
-          fi
-          
-          if [ -d src/bin ]; then mv src/bin/* "$OUT_DIR/"; elif [ -d bin ]; then mv bin/* "$OUT_DIR/"; fi
 
-      - name: Verify and optimize binaries
+          echo "=== Build info ==="
+          echo "CC:       $CC"
+          echo "CFLAGS:   ${CFLAGS:-}"
+          echo "LDFLAGS:  ${LDFLAGS:-}"
+          echo "STATIC:   ${STATIC_LINKING}"
+          echo "Makefile: ${{ matrix.makefile }}"
+
+          make -C src -f "${{ matrix.makefile }}" install \
+            CC="$CC" \
+            CLI_LDFLAGS="${CLI_LDFLAGS}" \
+            GNB_ES_LDFLAGS="${GNB_ES_LDFLAGS}"
+
+          if [ -d src/bin ]; then
+            mv src/bin/* "$OUT_DIR/"
+          else
+            echo "ERROR: src/bin not found after build"
+            exit 1
+          fi
+          echo "=== Build complete ==="
+          ls -lh "$OUT_DIR/"
+
+      - name: Verify and strip binaries
         run: |
           set -e
-          OUT_DIR="$GITHUB_WORKSPACE/.out/${{ steps.tag.outputs.tag }}/${{ matrix.os }}/${{ matrix.arch }}/bin"
-          if [ ! -d "$OUT_DIR" ]; then echo "OUT_DIR missing: $OUT_DIR"; exit 1; fi
-          
+          OUT_DIR="$GITHUB_WORKSPACE/.out/${{ steps.tag.outputs.tag }}/linux/${{ matrix.arch }}/bin"
           missing=0
-          for f in gnb_ctl gnb_es gnb_crypto gnb; do
+          for f in gnb gnb_ctl gnb_es gnb_crypto; do
             if [ -f "$OUT_DIR/$f" ]; then
               info=$(file -b "$OUT_DIR/$f")
-              size=$(stat -c%s "$OUT_DIR/$f" 2>/dev/null || stat -f%z "$OUT_DIR/$f" 2>/dev/null || echo "unknown")
-              echo "$f: $info (size: $size bytes)"
-              
-              # 压缩二进制文件体积 - 使用对应架构的strip工具
+              size=$(stat -c%s "$OUT_DIR/$f")
+              echo "$f: $info (${size} bytes)"
+
+              # Strip with arch-specific tool
               STRIP_CMD="strip"
               case "${{ matrix.arch }}" in
-                arm64)
-                  if command -v aarch64-linux-musl-strip >/dev/null 2>&1; then
-                    STRIP_CMD="aarch64-linux-musl-strip"
-                  elif command -v aarch64-linux-gnu-strip >/dev/null 2>&1; then
-                    STRIP_CMD="aarch64-linux-gnu-strip"
-                  fi
-                  ;;
-                armv7-softfp|armv7-hardfp)
-                  if command -v arm-linux-musleabihf-strip >/dev/null 2>&1; then
-                    STRIP_CMD="arm-linux-musleabihf-strip"
-                  elif command -v arm-linux-gnueabihf-strip >/dev/null 2>&1; then
-                    STRIP_CMD="arm-linux-gnueabihf-strip"
-                  fi
-                  ;;
-                mipsel)
-                  if command -v mipsel-linux-musl-strip >/dev/null 2>&1; then
-                    STRIP_CMD="mipsel-linux-musl-strip"
-                  elif command -v mipsel-linux-gnu-strip >/dev/null 2>&1; then
-                    STRIP_CMD="mipsel-linux-gnu-strip"
-                  fi
-                  ;;
-                mipsel-muslsf)
-                  if command -v mipsel-linux-muslsf-strip >/dev/null 2>&1; then
-                    STRIP_CMD="mipsel-linux-muslsf-strip"
-                  elif command -v mipsel-linux-musl-strip >/dev/null 2>&1; then
-                    STRIP_CMD="mipsel-linux-musl-strip"
-                  elif command -v mipsel-linux-gnu-strip >/dev/null 2>&1; then
-                    STRIP_CMD="mipsel-linux-gnu-strip"
-                  fi
-                  ;;
-                mips)
-                  if command -v mips-linux-gnu-strip >/dev/null 2>&1; then
-                    STRIP_CMD="mips-linux-gnu-strip"
-                  fi
-                  ;;
-                mips64)
-                  if command -v mips64-linux-gnuabi64-strip >/dev/null 2>&1; then
-                    STRIP_CMD="mips64-linux-gnuabi64-strip"
-                  fi
-                  ;;
-                mips64el)
-                  if command -v mips64el-linux-gnuabi64-strip >/dev/null 2>&1; then
-                    STRIP_CMD="mips64el-linux-gnuabi64-strip"
-                  fi
-                  ;;
-                riscv64)
-                  if command -v riscv64-linux-musl-strip >/dev/null 2>&1; then
-                    STRIP_CMD="riscv64-linux-musl-strip"
-                  elif command -v riscv64-linux-gnu-strip >/dev/null 2>&1; then
-                    STRIP_CMD="riscv64-linux-gnu-strip"
-                  fi
-                  ;;
+                arm64)         command -v aarch64-linux-gnu-strip >/dev/null 2>&1 && STRIP_CMD="aarch64-linux-gnu-strip" ;;
+                armv7-*)       command -v arm-linux-gnueabihf-strip >/dev/null 2>&1 && STRIP_CMD="arm-linux-gnueabihf-strip" ;;
+                mipsel)        command -v mipsel-linux-gnu-strip >/dev/null 2>&1 && STRIP_CMD="mipsel-linux-gnu-strip" ;;
+                mips)          command -v mips-linux-gnu-strip >/dev/null 2>&1 && STRIP_CMD="mips-linux-gnu-strip" ;;
+                mips64)        command -v mips64-linux-gnuabi64-strip >/dev/null 2>&1 && STRIP_CMD="mips64-linux-gnuabi64-strip" ;;
+                mips64el)      command -v mips64el-linux-gnuabi64-strip >/dev/null 2>&1 && STRIP_CMD="mips64el-linux-gnuabi64-strip" ;;
+                riscv64)       command -v riscv64-linux-gnu-strip >/dev/null 2>&1 && STRIP_CMD="riscv64-linux-gnu-strip" ;;
               esac
-              
-              echo "Using strip command: $STRIP_CMD"
-              $STRIP_CMD "$OUT_DIR/$f" 2>/dev/null || echo "Strip failed or not needed"
-              new_size=$(stat -c%s "$OUT_DIR/$f" 2>/dev/null || stat -f%z "$OUT_DIR/$f" 2>/dev/null || echo "unknown")
-              echo "Stripped $f (new size: $new_size bytes)"
-              
-              # 验证链接类型
-              if [ "${STATIC_LINKING:-false}" = "true" ]; then
-                # 期望静态链接
-                if echo "$info" | grep -qi "statically linked\|static-pie linked"; then
-                  echo "✓ $f is static (as expected)"
-                  # 调整大小检查 - strip后的静态二进制可能较小
-                  if [ "$new_size" != "unknown" ] && [ "$new_size" -lt 200000 ]; then
-                    echo "⚠️  WARNING: $f is marked as static but size ($new_size bytes) seems very small for a static binary"
-                  elif [ "$new_size" != "unknown" ] && [ "$new_size" -lt 500000 ]; then
-                    echo "ℹ️  INFO: $f static binary size ($new_size bytes) is reasonable after stripping"
-                  fi
-                else
-                  echo "ERROR: $f is not static but static linking was enabled"; missing=1
-                fi
-              else
-                # 期望动态链接，但静态也可接受
-                if echo "$info" | grep -qi "statically linked\|static-pie linked"; then
-                  echo "✓ $f is static (bonus!)"
-                elif echo "$info" | grep -qi "dynamically linked"; then
-                  echo "✓ $f is dynamic (as expected)"
-                else
-                  echo "? $f linking status unknown: $info"
-                fi
-              fi
+              $STRIP_CMD "$OUT_DIR/$f" 2>/dev/null || true
+              new_size=$(stat -c%s "$OUT_DIR/$f")
+              echo "  stripped -> ${new_size} bytes (via $STRIP_CMD)"
             else
-              echo "ERROR: binary $f not found"
+              echo "ERROR: $f not found in $OUT_DIR"
               missing=1
             fi
           done
-          
-          if [ $missing -ne 0 ]; then
-            echo "One or more binaries are missing or have wrong linking type." >&2
-            exit 1
-          fi
+          [ $missing -eq 0 ] || exit 1
 
       - name: Package
         run: |
-          OUT_PARENT="$GITHUB_WORKSPACE/.out/${{ steps.tag.outputs.tag }}/${{ matrix.os }}/${{ matrix.arch }}"
-          PKG_DIR="$GITHUB_WORKSPACE/.pkg/${{ steps.tag.outputs.tag }}"
-          ARCHIVE="${PROJECT}_${{ matrix.os }}_${{ matrix.arch }}_${{ steps.tag.outputs.tag }}.tgz"
+          TAG="${{ steps.tag.outputs.tag }}"
+          OUT_PARENT="$GITHUB_WORKSPACE/.out/${TAG}/linux/${{ matrix.arch }}"
+          PKG_DIR="$GITHUB_WORKSPACE/.pkg/${TAG}"
+          ARCHIVE="${PROJECT}_linux_${{ matrix.arch }}_${TAG}.tgz"
           tar -czvf "$ARCHIVE" -C "$OUT_PARENT" bin
           mv "$ARCHIVE" "$PKG_DIR/"
+
+      - name: Cleanup build output
+        if: always()
+        run: |
+          rm -rf "$GITHUB_WORKSPACE/.out" "$GITHUB_WORKSPACE/src/bin" || true
+          make -C src -f "${{ matrix.makefile }}" clean 2>/dev/null || true
+          df -h
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: gnb-${{ matrix.os }}-${{ matrix.arch }}
+          name: gnb-linux-${{ matrix.arch }}
           path: .pkg/${{ steps.tag.outputs.tag }}/*
 
   publish:
@@ -538,102 +222,53 @@ jobs:
         run: |
           mkdir -p .release/flat
           find .release -type f -name "*.tgz" -exec mv {} .release/flat/ \;
+          ls -lh .release/flat/
 
-      - name: Generate checksums
+      - name: Generate and merge checksums
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cd .release/flat
-          sha256sum $(ls | grep -v '^checksums.txt$') > checksums.txt
+          sha256sum *.tgz > new_checksums.txt
 
-      - name: Upload aggregated checksums artifact
+          # Merge with existing checksums from release (if any)
+          TAG="${{ github.ref_name }}"
+          mkdir -p .existing
+          gh release download "$TAG" -p "checksums.txt" -D .existing/ \
+            --repo "${GITHUB_REPOSITORY}" 2>/dev/null || true
+
+          if [ -f .existing/checksums.txt ]; then
+            new_files=$(awk '{print $2}' new_checksums.txt)
+            while IFS= read -r line; do
+              fname=$(echo "$line" | awk '{print $2}')
+              if ! printf '%s\n' $new_files | grep -qxF "$fname"; then
+                echo "$line"
+              fi
+            done < .existing/checksums.txt > kept.txt
+            sort -k2 kept.txt new_checksums.txt > checksums.txt
+          else
+            sort -k2 new_checksums.txt > checksums.txt
+          fi
+          echo "=== Final checksums.txt ==="
+          cat checksums.txt
+
+      - name: Upload checksums artifact
         uses: actions/upload-artifact@v4
         with:
-          name: checksums
+          name: checksums-linux
           path: .release/flat/checksums.txt
 
-      - name: Create GitHub Release
-        if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/')
+      - name: Upload to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        shell: bash
         run: |
           set -euo pipefail
           TAG="${{ github.ref_name }}"
           FILES=(.release/flat/*)
-          echo "Publishing release assets for $TAG: ${FILES[*]}"
-          echo "Trying upload with --clobber (if release missing, will create then retry)"
-          if ! gh release upload "$TAG" "${FILES[@]}" --clobber --repo "${GITHUB_REPOSITORY}"; then
-            echo "Upload failed (release may not exist). Creating release shell then retrying upload..."
-            # Create release without assets; ignore failure if it already exists
+          echo "Uploading to release $TAG: ${FILES[*]}"
+          gh release upload "$TAG" "${FILES[@]}" --clobber --repo "${GITHUB_REPOSITORY}" || {
+            echo "Upload failed, creating release first..."
             gh release create "$TAG" --title "Release $TAG" --generate-notes --repo "${GITHUB_REPOSITORY}" || true
-            # Retry upload (will overwrite same-name only)
             gh release upload "$TAG" "${FILES[@]}" --clobber --repo "${GITHUB_REPOSITORY}"
-          fi
-
-      
-
-      - name: Upload to remote via rsync
-        if: startsWith(github.ref, 'refs/tags/')
-        env:
-          SSH_HOST: ${{ secrets.DOWNLOAD_SSH_HOST }}
-          SSH_USER: ${{ secrets.DOWNLOAD_SSH_USER }}
-          SSH_KEY: ${{ secrets.DOWNLOAD_SSH_KEY }}
-          SSH_PORT: ${{ secrets.DOWNLOAD_SSH_PORT }}
-          REMOTE_DIR: ${{ secrets.DOWNLOAD_SSH_REMOTE_DIR }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "::group::Upload debug: env summary"
-          SRC_DIR=".release/flat"
-          if [[ ! -d "$SRC_DIR" ]]; then
-            echo "$SRC_DIR not found; nothing to upload"
-            exit 0
-          fi
-          TAG="${{ github.ref_name }}"
-          # Validate secrets
-          if [[ -z "${SSH_HOST:-}" || -z "${SSH_USER:-}" || -z "${SSH_KEY:-}" || -z "${REMOTE_DIR:-}" ]]; then
-            echo "SSH upload skipped (secrets not fully configured)."
-            exit 0
-          fi
-          PORT="${SSH_PORT:-22}"
-          DEST_DIR="${REMOTE_DIR%/}/${TAG}/"
-          echo "TAG=$TAG"
-          echo "SSH_HOST=$SSH_HOST PORT=$PORT"
-          echo "DEST_DIR=$DEST_DIR"
-          echo "Listing $SRC_DIR:"; ls -la "$SRC_DIR" || true; echo "Sizes:"; du -sh "$SRC_DIR"/* 2>/dev/null || true
-          echo "::endgroup::"
-
-          mkdir -p ~/.ssh
-          chmod 700 ~/.ssh
-          echo "$SSH_KEY" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          # Populate known_hosts for given host:port with all common key types and bracketed form for non-22
-          if [[ "$PORT" != "22" ]]; then
-            ssh-keyscan -p "$PORT" -t rsa,ecdsa,ed25519 "$SSH_HOST" \
-              | awk -v h="$SSH_HOST" -v p="$PORT" '{ $1 = "["h"]:"p; print }' \
-              >> ~/.ssh/known_hosts 2>/dev/null || true
-          else
-            ssh-keyscan -p "$PORT" -t rsa,ecdsa,ed25519 "$SSH_HOST" \
-              >> ~/.ssh/known_hosts 2>/dev/null || true
-          fi
-          chmod 644 ~/.ssh/known_hosts || true
-          echo "::group::Upload debug: known_hosts"
-          echo "known_hosts entries:"; wc -l ~/.ssh/known_hosts || true; head -n 5 ~/.ssh/known_hosts || true
-          echo "::endgroup::"
-
-          SSH_OPTS="-i ~/.ssh/id_rsa -p $PORT -o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/known_hosts -o BatchMode=yes -o ConnectTimeout=15"
-          echo "::group::Upload debug: SSH connectivity test (-vvv)"
-          ssh -vvv $SSH_OPTS "$SSH_USER@$SSH_HOST" "echo 'SSH OK'; uname -a" || { echo "SSH connectivity failed"; exit 1; }
-          echo "::endgroup::"
-
-          echo "::group::Upload debug: prepare remote dir"
-          ssh $SSH_OPTS "$SSH_USER@$SSH_HOST" "mkdir -p '$DEST_DIR' && echo 'Remote dir prepared: $DEST_DIR'"
-          echo "::endgroup::"
-
-          echo "::group::Upload debug: rsync dry-run (-n)"
-          rsync -avzn --delete -e "ssh $SSH_OPTS" "$SRC_DIR/" "$SSH_USER@$SSH_HOST:$DEST_DIR" || { echo "rsync dry-run failed"; exit 1; }
-          echo "::endgroup::"
-
-          echo "::group::Upload: rsync real run"
-          rsync -avz -e "ssh $SSH_OPTS" "$SRC_DIR/" "$SSH_USER@$SSH_HOST:$DEST_DIR"
-          echo "::endgroup::"
+          }
