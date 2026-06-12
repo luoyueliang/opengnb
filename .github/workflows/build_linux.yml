@@ -335,6 +335,13 @@ jobs:
             echo "Dynamic linking for ${{ matrix.arch }} (static linking not supported with current toolchain)"
           fi
 
+          # OpenWrt: Makefile.openwrt does not define CFLAGS with include paths
+          # (unlike Makefile.linux which has -I./src -I./libs), add them here
+          if [ "${{ matrix.os }}" = "openwrt" ]; then
+            INCLUDE_FLAGS="-I./src -I./libs -I./libs/miniupnpc -I./libs/libnatpmp -I./libs/zlib -D NO_GZIP=1 -D GNB_OPENWRT_BUILD=1"
+            CFLAGS="$INCLUDE_FLAGS ${CFLAGS:-}"
+          fi
+
           echo "CC=$CC" >> $GITHUB_ENV
           echo "CXX=$CXX" >> $GITHUB_ENV
           echo "AR=$AR" >> $GITHUB_ENV
