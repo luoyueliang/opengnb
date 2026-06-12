@@ -182,13 +182,49 @@ jobs:
           echo "arch:        ${{ matrix.arch.name }}"
           echo "tag:         $TAG"
 
-          # SDK build: dynamic linking against musl (OpenWrt has musl runtime)
-          # Note: Makefile.openwrt has no CFLAGS with include paths (unlike Makefile.linux),
-          # so we must pass them here. This is an upstream issue in v1.6.5.
+          # Clean source tree first (deletes all .o files)
           make -C src -f Makefile.openwrt clean
+
+          # --- Build bundled dependencies (zlib, miniupnpc, libnatpmp) ---
+          # Makefile.openwrt links with -lz -lnatpmp -lminiupnpc but the SDK
+          # does not include these libs, so we build them from bundled sources.
+          DEP_LIB="/tmp/dep-libs"
+          mkdir -p "$DEP_LIB"
+
+          # Find ar tool (same directory as cross-compiler gcc)
+          CC_DIR=$(dirname "$CC")
+          AR_BIN=$(find "$CC_DIR" -maxdepth 1 \( -name "*-ar" -o -name "*-gcc-ar" \) | head -1)
+          if [ -z "$AR_BIN" ]; then AR_BIN="ar"; fi
+          echo "Using AR: $AR_BIN"
+
+          echo "=== Building zlib ==="
+          for f in adler32 deflate inffast inflate inftrees trees zutil; do
+            $CC -c -fPIC -o src/libs/zlib/${f}.o src/libs/zlib/${f}.c
+          done
+          $AR_BIN rcs "$DEP_LIB/libz.a" src/libs/zlib/*.o
+
+          echo "=== Building miniupnpc ==="
+          MINIUPNP_SRCS="miniwget minixml igd_desc_parse minisoap miniupnpc \
+            upnpreplyparse upnpcommands upnperrors connecthostport portlistingparse \
+            receivedata upnpdev addr_is_reserved minissdpc"
+          for f in $MINIUPNP_SRCS; do
+            $CC -c -fPIC -o src/libs/miniupnpc/${f}.o src/libs/miniupnpc/${f}.c
+          done
+          $AR_BIN rcs "$DEP_LIB/libminiupnpc.a" src/libs/miniupnpc/*.o
+
+          echo "=== Building libnatpmp ==="
+          for f in natpmp getgateway; do
+            $CC -c -fPIC -o src/libs/libnatpmp/${f}.o src/libs/libnatpmp/${f}.c
+          done
+          $AR_BIN rcs "$DEP_LIB/libnatpmp.a" src/libs/libnatpmp/*.o
+
+          echo "=== Dependencies built ==="
+          ls -lh "$DEP_LIB/"
           make -C src -f Makefile.openwrt install \
             CC="$CC" \
-            CFLAGS="-I./src -I./libs -DGNB_OPENWRT_BUILD=1" \
+            CFLAGS="-ffunction-sections -fdata-sections -I./src -I./libs -DGNB_OPENWRT_BUILD=1 -O2" \
+            CLI_LDFLAGS="-Wl,--gc-sections -s -L${DEP_LIB}" \
+            GNB_ES_LDFLAGS="-Wl,--gc-sections -s -L${DEP_LIB}" \
             DEBUG=0
 
           if [ -d src/bin ]; then
