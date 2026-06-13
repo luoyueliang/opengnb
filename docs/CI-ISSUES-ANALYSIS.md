@@ -7,12 +7,28 @@
 
 ---
 
-## CI 实际编译指令
+## 复现问题
 
-### 第一步：构建依赖库（zlib / miniupnpc / libnatpmp）
+### 原始直接构建指令（会失败）
+
+在 OpenWrt SDK 环境下，按 Makefile.openwrt 的默认方式构建：
+
+```bash
+export CC=aarch64-openwrt-linux-musl-gcc
+export STAGING_DIR=/path/to/openwrt-sdk/staging_dir
+
+cd src
+make -f Makefile.openwrt install CC="$CC" DEBUG=0
+```
+
+这会依次遇到 5 个错误（见下方问题一至五）。
+
+### 修复后的构建指令（CI 实际使用）
+
+#### 第一步：构建依赖库（zlib / miniupnpc / libnatpmp）
 
 OpenWrt SDK 不包含这三个开发库，`Makefile.openwrt` 用 `-lz -lnatpmp -lminiupnpc` 链接系统库，
-但 SDK 中没有。我们从 `src/libs/` bundled sources 构建静态库：
+但 SDK 中没有。从 `src/libs/` bundled sources 构建静态库：
 
 ```bash
 DEP_LIB="/tmp/dep-libs"
@@ -39,9 +55,7 @@ done
 $AR_BIN rcs "$DEP_LIB/libnatpmp.a" src/libs/libnatpmp/*.o
 ```
 
-### 第二步：编译 gnb
-
-通过 make 变量覆盖 `Makefile.openwrt` 的缺陷：
+#### 第二步：编译 gnb（通过 make 变量覆盖 Makefile.openwrt 的缺陷）
 
 ```bash
 make -C src -f Makefile.openwrt install \
